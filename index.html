@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고삼저수지 갈수기 GPS 지도</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin:0; padding:0; }
+        #map { height: 100vh; width: 100%; }
+        #info { 
+            position: absolute; top: 10px; left: 10px; 
+            background: rgba(255,255,255,0.95); padding: 12px; 
+            border-radius: 8px; z-index: 1000; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info">GPS 불러오는 중... 위치 권한을 허용해주세요</div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 지도 초기화
+        const map = L.map('map', {
+            zoomControl: true,
+            attributionControl: true
+        }).setView([37.082, 127.283], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19
+        }).addTo(map);
+
+        // 이미지 오버레이
+        const imageUrl = 'gosam-low-water.jpg';
+        const bounds = [
+            [37.09483, 127.269358],
+            [37.0727, 127.2971]
+        ];
+        L.imageOverlay(imageUrl, bounds, {opacity: 0.95}).addTo(map);
+
+        let boatMarker = null;
+
+        function updateLocation(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            document.getElementById('info').innerHTML = `
+                📍 현재 위치<br>
+                위도: ${lat.toFixed(6)}<br>
+                경도: ${lng.toFixed(6)}<br>
+                정확도: ${position.coords.accuracy.toFixed(1)}m
+            `;
+            
+            if (!boatMarker) {
+                boatMarker = L.marker([lat, lng], {
+                    draggable: false
+                }).addTo(map)
+                  .bindPopup('🚤 현재 보트 위치').openPopup();
+            } else {
+                boatMarker.setLatLng([lat, lng]);
+            }
+            
+            // 지도 중심을 현재 위치로 부드럽게 이동 (선택)
+            // map.flyTo([lat, lng], map.getZoom());
+        }
+
+        // GPS 시작
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(updateLocation, function(error) {
+                let msg = 'GPS 오류: ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        msg += '위치 권한이 거부되었습니다.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        msg += '위치 정보를 사용할 수 없습니다.';
+                        break;
+                    case error.TIMEOUT:
+                        msg += '시간 초과. 다시 시도해주세요.';
+                        break;
+                    default:
+                        msg += '알 수 없는 오류';
+                }
+                document.getElementById('info').innerHTML = msg;
+            }, { 
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 10000
+            });
+        } else {
+            document.getElementById('info').innerHTML = '이 브라우저는 GPS를 지원하지 않습니다.';
+        }
+    </script>
+</body>
+</html>
