@@ -3,540 +3,529 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>고삼저수지 갈수기 GPS</title>
+  <title>고삼저수지 GPS</title>
 
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
 
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #111;
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-    }
-
-    #map {
-      width: 100%;
-      height: 100vh;
-    }
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif; }
+    #map { width:100%; height:100vh; }
 
     .controls {
-      position: absolute;
-      top: calc(12px + env(safe-area-inset-top));
-      left: 12px;
-      right: 12px;
-      z-index: 10;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; right:12px;
+      z-index:10; display:flex; gap:8px; flex-wrap:wrap;
     }
 
     button {
-      border: 0;
-      border-radius: 11px;
-      padding: 11px 13px;
-      background: rgba(0,122,255,0.96);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 800;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+      border:0; border-radius:11px; padding:11px 13px;
+      background:rgba(0,122,255,.96); color:#fff;
+      font-size:14px; font-weight:800;
+      box-shadow:0 2px 8px rgba(0,0,0,.28);
     }
 
-    button.dark {
-      background: rgba(25,25,25,0.94);
-    }
-
-    button.active {
-      background: rgba(255,149,0,0.98);
-      color: #111;
-    }
+    button.dark { background:rgba(25,25,25,.94); }
+    button.active { background:rgba(255,149,0,.98); color:#111; }
 
     #info {
-      position: absolute;
-      top: calc(62px + env(safe-area-inset-top));
-      left: 12px;
-      right: 12px;
-      z-index: 9;
-      background: rgba(255,255,255,0.95);
-      color: #111;
-      padding: 11px 14px;
-      border-radius: 13px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-      font-size: 14px;
-      line-height: 1.45;
-      pointer-events: none;
+      position:absolute; top:calc(64px + env(safe-area-inset-top)); left:12px; right:12px;
+      z-index:9; background:rgba(255,255,255,.95); color:#111;
+      padding:11px 14px; border-radius:13px;
+      box-shadow:0 2px 10px rgba(0,0,0,.25);
+      font-size:14px; line-height:1.45; pointer-events:none;
     }
 
     .boat {
-      width: 44px;
-      height: 44px;
-      position: relative;
-      transform-origin: 50% 50%;
-      will-change: transform;
-    }
-
-    .boat-arrow {
-      position: absolute;
-      left: 9px;
-      top: 0px;
-      width: 0;
-      height: 0;
-      border-left: 13px solid transparent;
-      border-right: 13px solid transparent;
-      border-bottom: 31px solid #007aff;
-      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
-    }
-
-    .boat-dot {
-      position: absolute;
-      left: 12px;
-      top: 21px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #007aff;
-      border: 4px solid #fff;
-      box-sizing: border-box;
-      box-shadow: 0 0 0 6px rgba(0,122,255,0.22);
+      width:54px; height:54px;
+      transform-origin:50% 50%;
+      will-change:transform;
     }
 
     .maplibregl-ctrl-bottom-left,
-    .maplibregl-ctrl-bottom-right {
-      display: none;
-    }
+    .maplibregl-ctrl-bottom-right { display:none; }
   </style>
 </head>
 
 <body>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <div class="controls">
-    <button onclick="goToMe()">📍 내 위치</button>
-    <button id="compassBtn" onclick="enableCompass()">🧭 나침반 허용</button>
-    <button id="headingBtn" onclick="toggleHeadingUp()">헤딩업 OFF</button>
-    <button class="dark" onclick="northUp()">북쪽고정</button>
-  </div>
+<div class="controls">
+  <button onclick="goToMe()">📍 내 위치</button>
+  <button id="compassBtn" onclick="enableCompass()">🧭 나침반 허용</button>
+  <button id="headingBtn" onclick="toggleHeadingUp()">헤딩업 OFF</button>
+  <button class="dark" onclick="northUp()">북쪽고정</button>
+</div>
 
-  <div id="info">GPS 준비 중...</div>
+<div id="info">GPS 준비 중...</div>
 
-  <script>
-    // =====================================================
-    // 파일/좌표 설정
-    // =====================================================
-    const IMAGE_URL = "gosam-low-water-optimized.jpg";
+<script>
+const IMAGE_URL = "gosam-low-water-optimized.jpg";
 
-    // 이미지 코너 좌표.
-    // 업로드한 이미지가 이전 bounds와 동일하다는 기준.
-    // MapLibre image source는 [좌상, 우상, 우하, 좌하] 순서.
-    const IMAGE_COORDINATES = [
-      [127.269358, 37.09483], // top-left
-      [127.297100, 37.09483], // top-right
-      [127.297100, 37.07270], // bottom-right
-      [127.269358, 37.07270]  // bottom-left
-    ];
+const IMAGE_COORDINATES = [
+  [127.269358, 37.09483],
+  [127.297100, 37.09483],
+  [127.297100, 37.07270],
+  [127.269358, 37.07270]
+];
 
-    const INITIAL_CENTER = [127.283, 37.082];
-    const INITIAL_ZOOM = 14.6;
+const INITIAL_CENTER = [127.283, 37.082];
+const INITIAL_ZOOM = 14.8;
 
-    // GPS 필터
-    const MAX_ACCEPT_ACCURACY = 25;       // m. 이보다 오차 크면 좌표 업데이트 약하게 처리
-    const MIN_MOVE_UPDATE = 1.2;          // m. 이보다 작은 흔들림은 무시
-    const CENTER_UPDATE_DISTANCE = 4.0;   // m. 헤딩업에서 지도 중심 이동 최소 거리
+const RING_METERS = [5,10,15,20,25,30,35,40,45,50];
 
-    // 방향 필터
-    const GPS_HEADING_SPEED = 1.4;        // m/s. 약 5km/h 이상일 때 GPS heading 신뢰
-    const COMPASS_SMOOTHING = 0.18;       // 제자리 회전 반응성
-    const GPS_POS_SMOOTHING = 0.25;       // 좌표 보간
+let headingUp = false;
+let compassEnabled = false;
+let currentLngLat = null;
+let smoothedLngLat = null;
+let compassHeading = null;
+let gpsHeading = null;
+let finalHeading = 0;
+let boatMarker = null;
+let lastGpsAt = 0;
 
-    // =====================================================
-    // 지도
-    // =====================================================
-    const map = new maplibregl.Map({
-      container: "map",
-      center: INITIAL_CENTER,
-      zoom: INITIAL_ZOOM,
-      bearing: 0,
-      pitch: 0,
-      dragRotate: true,
-      touchZoomRotate: true,
-      style: {
-        version: 8,
-        sources: {
-          "google-satellite": {
-            type: "raster",
-            tiles: [
-              "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
-            ],
-            tileSize: 256,
-            maxzoom: 21
-          }
-        },
-        layers: [
-          {
-            id: "google-satellite",
-            type: "raster",
-            source: "google-satellite"
-          }
-        ]
-      }
-    });
+const info = document.getElementById("info");
+const compassBtn = document.getElementById("compassBtn");
+const headingBtn = document.getElementById("headingBtn");
 
-    map.on("load", () => {
-      map.addSource("low-water-map", {
-        type: "image",
-        url: IMAGE_URL,
-        coordinates: IMAGE_COORDINATES
-      });
-
-      map.addLayer({
-        id: "low-water-map-layer",
+const map = new maplibregl.Map({
+  container: "map",
+  center: INITIAL_CENTER,
+  zoom: INITIAL_ZOOM,
+  bearing: 0,
+  pitch: 0,
+  dragRotate: true,
+  touchZoomRotate: true,
+  style: {
+    version: 8,
+    sources: {
+      osm: {
         type: "raster",
-        source: "low-water-map",
-        paint: {
-          "raster-opacity": 0.92,
-          "raster-fade-duration": 0
-        }
-      });
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "© OpenStreetMap"
+      }
+    },
+    layers: [{ id:"osm", type:"raster", source:"osm" }]
+  }
+});
 
-      startGPS();
-    });
+map.on("load", () => {
+  map.addSource("low-water", {
+    type: "image",
+    url: IMAGE_URL,
+    coordinates: IMAGE_COORDINATES
+  });
 
-    // =====================================================
-    // 상태
-    // =====================================================
-    const info = document.getElementById("info");
-    const compassBtn = document.getElementById("compassBtn");
-    const headingBtn = document.getElementById("headingBtn");
+  map.addLayer({
+    id: "low-water-layer",
+    type: "raster",
+    source: "low-water",
+    paint: { "raster-opacity": 0.92 }
+  });
 
-    let headingUp = false;
-    let compassEnabled = false;
+  createRangeRings();
+  startGPS();
+});
 
-    let currentLngLat = null;
-    let smoothedLngLat = null;
-    let lastCenterLngLat = null;
+function normalizeDeg(d) {
+  d = d % 360;
+  return d < 0 ? d + 360 : d;
+}
 
-    let compassHeading = null;  // iPhone 전자나침반
-    let gpsHeading = null;      // 이동방향
-    let finalHeading = null;    // 실제 사용 방향
-    let lastUpdateAt = 0;
+function angleDiff(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
 
-    let boatEl = document.createElement("div");
-    boatEl.className = "boat";
-    boatEl.innerHTML = '<div class="boat-arrow"></div><div class="boat-dot"></div>';
+function smoothAngle(prev, next, factor) {
+  return normalizeDeg(prev + angleDiff(prev, next) * factor);
+}
 
-    let boatMarker = new maplibregl.Marker({
-      element: boatEl,
+function smoothPosition(prev, next, factor) {
+  if (!prev) return next;
+  return [
+    prev[0] + (next[0] - prev[0]) * factor,
+    prev[1] + (next[1] - prev[1]) * factor
+  ];
+}
+
+function formatSpeed(s) {
+  if (s == null || isNaN(s)) return "-";
+  return (s * 3.6).toFixed(1) + "km/h";
+}
+
+function formatHeading(h) {
+  if (h == null || isNaN(h)) return "-";
+  return Math.round(normalizeDeg(h)) + "°";
+}
+
+function distanceMeters(a, b) {
+  const R = 6371000;
+  const lat1 = a[1] * Math.PI / 180;
+  const lat2 = b[1] * Math.PI / 180;
+  const dLat = (b[1] - a[1]) * Math.PI / 180;
+  const dLng = (b[0] - a[0]) * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+}
+
+function makeBoatElement() {
+  const el = document.createElement("div");
+  el.className = "boat";
+  el.innerHTML = `
+    <svg width="54" height="54" viewBox="0 0 54 54">
+      <g filter="url(#shadow)">
+        <path d="M27 3 C36 15 40 30 35 45 C32 49 22 49 19 45 C14 30 18 15 27 3 Z"
+              fill="#007aff" stroke="white" stroke-width="3"/>
+        <path d="M27 8 L33 42 L27 47 L21 42 Z"
+              fill="rgba(255,255,255,0.25)"/>
+        <circle cx="27" cy="32" r="5" fill="white"/>
+      </g>
+      <defs>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.45"/>
+        </filter>
+      </defs>
+    </svg>
+  `;
+  return el;
+}
+
+function updateBoat(pos) {
+  if (!boatMarker) {
+    boatMarker = new maplibregl.Marker({
+      element: makeBoatElement(),
       anchor: "center",
-      rotationAlignment: "map",
-      pitchAlignment: "map"
+      rotationAlignment: "map"
+    }).setLngLat(pos).addTo(map);
+  } else {
+    boatMarker.setLngLat(pos);
+  }
+
+  const el = boatMarker.getElement();
+  const mapBearing = map.getBearing() || 0;
+  el.style.transform = `translate(-50%, -50%) rotate(${normalizeDeg(finalHeading + mapBearing)}deg)`;
+}
+
+function circlePolygon(center, radiusMeters, points = 96) {
+  const coords = [];
+  const lat = center[1] * Math.PI / 180;
+  const lng = center[0] * Math.PI / 180;
+  const R = 6371000;
+
+  for (let i = 0; i <= points; i++) {
+    const brng = 2 * Math.PI * i / points;
+    const lat2 = Math.asin(
+      Math.sin(lat) * Math.cos(radiusMeters / R) +
+      Math.cos(lat) * Math.sin(radiusMeters / R) * Math.cos(brng)
+    );
+    const lng2 = lng + Math.atan2(
+      Math.sin(brng) * Math.sin(radiusMeters / R) * Math.cos(lat),
+      Math.cos(radiusMeters / R) - Math.sin(lat) * Math.sin(lat2)
+    );
+    coords.push([lng2 * 180 / Math.PI, lat2 * 180 / Math.PI]);
+  }
+
+  return {
+    type: "Feature",
+    properties: { radius: radiusMeters },
+    geometry: { type: "Polygon", coordinates: [coords] }
+  };
+}
+
+function labelPoint(center, radiusMeters) {
+  const R = 6371000;
+  const lat = center[1] * Math.PI / 180;
+  const lng = center[0] * Math.PI / 180;
+  const bearing = Math.PI / 2;
+
+  const lat2 = Math.asin(
+    Math.sin(lat) * Math.cos(radiusMeters / R) +
+    Math.cos(lat) * Math.sin(radiusMeters / R) * Math.cos(bearing)
+  );
+
+  const lng2 = lng + Math.atan2(
+    Math.sin(bearing) * Math.sin(radiusMeters / R) * Math.cos(lat),
+    Math.cos(radiusMeters / R) - Math.sin(lat) * Math.sin(lat2)
+  );
+
+  return {
+    type: "Feature",
+    properties: { label: radiusMeters + "m" },
+    geometry: { type: "Point", coordinates: [lng2 * 180 / Math.PI, lat2 * 180 / Math.PI] }
+  };
+}
+
+function createRangeRings() {
+  map.addSource("range-rings", {
+    type: "geojson",
+    data: { type:"FeatureCollection", features: [] }
+  });
+
+  map.addLayer({
+    id: "range-rings-fill",
+    type: "fill",
+    source: "range-rings",
+    paint: {
+      "fill-color": "#007aff",
+      "fill-opacity": 0.015
+    }
+  });
+
+  map.addLayer({
+    id: "range-rings-line",
+    type: "line",
+    source: "range-rings",
+    paint: {
+      "line-color": "#007aff",
+      "line-width": [
+        "case",
+        ["in", ["get", "radius"], ["literal", [20,30,40,50]]],
+        2,
+        1
+      ],
+      "line-opacity": 0.85
+    }
+  });
+
+  map.addSource("range-labels", {
+    type: "geojson",
+    data: { type:"FeatureCollection", features: [] }
+  });
+
+  map.addLayer({
+    id: "range-labels-layer",
+    type: "symbol",
+    source: "range-labels",
+    layout: {
+      "text-field": ["get", "label"],
+      "text-size": 12,
+      "text-anchor": "center",
+      "text-allow-overlap": true
+    },
+    paint: {
+      "text-color": "#005fcc",
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 2
+    }
+  });
+}
+
+function updateRangeRings(center) {
+  if (!map.getSource("range-rings")) return;
+
+  map.getSource("range-rings").setData({
+    type: "FeatureCollection",
+    features: RING_METERS.map(r => circlePolygon(center, r))
+  });
+
+  map.getSource("range-labels").setData({
+    type: "FeatureCollection",
+    features: RING_METERS.map(r => labelPoint(center, r))
+  });
+}
+
+function chooseHeading(speed) {
+  if (compassHeading != null && !isNaN(compassHeading)) {
+    finalHeading = smoothAngle(finalHeading, compassHeading, 0.22);
+    return "나침반";
+  }
+
+  if (gpsHeading != null && !isNaN(gpsHeading)) {
+    finalHeading = smoothAngle(finalHeading, gpsHeading, 0.18);
+    return "GPS";
+  }
+
+  return "대기";
+}
+
+function updateInfo(accuracy, speed, source) {
+  info.innerHTML =
+    `📍 정확도: <b>${Math.round(accuracy || 0)}m</b><br>` +
+    `🚤 속도: <b>${formatSpeed(speed)}</b><br>` +
+    `🧭 뱃머리: <b>${formatHeading(finalHeading)}</b> (${source})<br>` +
+    `⭕ 거리링: <b>5m ~ 50m</b><br>` +
+    `모드: <b>${headingUp ? "헤딩업" : "북쪽고정"}</b>`;
+}
+
+function updateAll(pos, accuracy, speed, source) {
+  updateBoat(pos);
+  updateRangeRings(pos);
+
+  if (headingUp) {
+    map.easeTo({
+      center: pos,
+      bearing: -normalizeDeg(finalHeading),
+      duration: 120,
+      easing: t => t
     });
+  }
 
-    let markerAdded = false;
+  updateInfo(accuracy, speed, source);
+}
 
-    // =====================================================
-    // 유틸
-    // =====================================================
-    function normalizeDeg(deg) {
-      deg = deg % 360;
-      return deg < 0 ? deg + 360 : deg;
-    }
-
-    function angleDiff(from, to) {
-      return ((to - from + 540) % 360) - 180;
-    }
-
-    function smoothAngle(prev, next, factor) {
-      if (prev === null || prev === undefined || isNaN(prev)) return normalizeDeg(next);
-      return normalizeDeg(prev + angleDiff(prev, next) * factor);
-    }
-
-    function distanceMeters(a, b) {
-      if (!a || !b) return Infinity;
-
-      const R = 6371000;
-      const lat1 = a[1] * Math.PI / 180;
-      const lat2 = b[1] * Math.PI / 180;
-      const dLat = (b[1] - a[1]) * Math.PI / 180;
-      const dLng = (b[0] - a[0]) * Math.PI / 180;
-
-      const x =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1) * Math.cos(lat2) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-      return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
-    }
-
-    function smoothPosition(prev, next, factor) {
-      if (!prev) return next;
-      return [
-        prev[0] + (next[0] - prev[0]) * factor,
-        prev[1] + (next[1] - prev[1]) * factor
-      ];
-    }
-
-    function formatSpeed(speed) {
-      if (speed === null || speed === undefined || isNaN(speed)) return "-";
-      return (speed * 3.6).toFixed(1) + "km/h";
-    }
-
-    function formatHeading(h) {
-      if (h === null || h === undefined || isNaN(h)) return "-";
-      return Math.round(normalizeDeg(h)) + "°";
-    }
-
-    function setInfoText(accuracy, speed, source) {
-      info.innerHTML =
-        `📍 정확도: <b>${Math.round(accuracy || 0)}m</b><br>` +
-        `🚤 속도: <b>${formatSpeed(speed)}</b><br>` +
-        `🧭 방향: <b>${formatHeading(finalHeading)}</b> ${source ? "(" + source + ")" : ""}<br>` +
-        `모드: <b>${headingUp ? "헤딩업" : "북쪽고정"}</b> · 나침반: <b>${compassEnabled ? "ON" : "OFF"}</b>`;
-    }
-
-    function chooseHeading(speed) {
-      // 제자리 회전이 중요하므로 나침반 우선.
-      // 빠르게 직진할 때만 GPS heading이 더 안정적일 수 있음.
-      if (
-        speed !== null &&
-        speed !== undefined &&
-        !isNaN(speed) &&
-        speed >= GPS_HEADING_SPEED &&
-        gpsHeading !== null &&
-        !isNaN(gpsHeading)
-      ) {
-        // 이동 중에는 GPS와 나침반을 약하게 혼합
-        if (compassHeading !== null && !isNaN(compassHeading)) {
-          const mixed = normalizeDeg(gpsHeading + angleDiff(gpsHeading, compassHeading) * 0.25);
-          finalHeading = smoothAngle(finalHeading, mixed, 0.22);
-          return "GPS+나침반";
-        }
-
-        finalHeading = smoothAngle(finalHeading, gpsHeading, 0.22);
-        return "GPS";
-      }
-
-      if (compassHeading !== null && !isNaN(compassHeading)) {
-        finalHeading = smoothAngle(finalHeading, compassHeading, COMPASS_SMOOTHING);
-        return "나침반";
-      }
-
-      return "대기";
-    }
-
-    function updateMarkerAndMap(pos, accuracy, speed) {
-      if (!pos) return;
-
-      if (!markerAdded) {
-        boatMarker.setLngLat(pos).addTo(map);
-        markerAdded = true;
-      } else {
-        boatMarker.setLngLat(pos);
-      }
-
-      // 마커는 실제 방향으로 회전.
-      // 지도 자체가 헤딩업으로 회전 중이면 마커가 화면 위를 향하도록 보정.
-      const mapBearing = map.getBearing() || 0;
-      const markerRotation = normalizeDeg(finalHeading + mapBearing);
-      boatEl.style.transform = `rotate(${markerRotation}deg)`;
-
-      if (headingUp && finalHeading !== null && !isNaN(finalHeading)) {
-        map.rotateTo(-normalizeDeg(finalHeading), { duration: 180 });
-      }
-
-      if (headingUp) {
-        if (!lastCenterLngLat || distanceMeters(lastCenterLngLat, pos) >= CENTER_UPDATE_DISTANCE) {
-          lastCenterLngLat = pos;
-          map.easeTo({
-            center: pos,
-            duration: 180,
-            easing: t => t
-          });
-        }
+window.enableCompass = async function() {
+  try {
+    if (
+      typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function"
+    ) {
+      const result = await DeviceOrientationEvent.requestPermission();
+      if (result !== "granted") {
+        alert("나침반 권한이 거부되었습니다.");
+        return;
       }
     }
 
-    // =====================================================
-    // 아이폰 전자나침반
-    // =====================================================
-    window.enableCompass = async function() {
-      try {
-        if (
-          typeof DeviceOrientationEvent !== "undefined" &&
-          typeof DeviceOrientationEvent.requestPermission === "function"
-        ) {
-          const result = await DeviceOrientationEvent.requestPermission();
+    window.addEventListener("deviceorientationabsolute", onOrientation, true);
+    window.addEventListener("deviceorientation", onOrientation, true);
 
-          if (result !== "granted") {
-            info.innerHTML = "나침반 권한이 거부되었습니다. Safari 설정에서 동작 및 방향 접근을 허용하세요.";
-            return;
-          }
-        }
+    compassEnabled = true;
+    compassBtn.classList.add("active");
+    compassBtn.innerText = "🧭 나침반 ON";
+  } catch (e) {
+    alert("나침반 권한 요청 실패: " + e.message);
+  }
+};
 
-        window.addEventListener("deviceorientationabsolute", handleOrientation, true);
-        window.addEventListener("deviceorientation", handleOrientation, true);
+function onOrientation(e) {
+  let h = null;
 
-        compassEnabled = true;
-        compassBtn.classList.add("active");
-        compassBtn.innerText = "🧭 나침반 ON";
-      } catch (e) {
-        info.innerHTML = "나침반 권한 요청 실패: " + e.message;
-      }
-    };
+  if (e.webkitCompassHeading != null) {
+    h = e.webkitCompassHeading;
+  } else if (e.alpha != null) {
+    h = 360 - e.alpha;
+  }
 
-    function handleOrientation(event) {
-      let h = null;
+  if (h == null || isNaN(h)) return;
 
-      // iPhone Safari 전용. 0=북쪽, 시계방향 degree.
-      if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
-        h = event.webkitCompassHeading;
-      }
-      // Android/기타 브라우저 fallback.
-      else if (event.absolute === true && event.alpha !== null) {
-        h = 360 - event.alpha;
-      }
-      else if (event.alpha !== null) {
-        h = 360 - event.alpha;
-      }
+  compassHeading = smoothAngle(compassHeading ?? h, h, 0.22);
+  const source = chooseHeading(0);
 
-      if (h === null || isNaN(h)) return;
+  if (smoothedLngLat) {
+    updateAll(smoothedLngLat, null, 0, source);
+  }
+}
 
-      compassHeading = smoothAngle(compassHeading, h, COMPASS_SMOOTHING);
+function startGPS() {
+  if (!navigator.geolocation) {
+    info.innerHTML = "GPS를 지원하지 않는 브라우저입니다.";
+    return;
+  }
 
-      // 제자리 회전 대응: GPS 업데이트가 없어도 나침반만으로 즉시 회전
-      if (headingUp && currentLngLat) {
-        chooseHeading(0);
-        updateMarkerAndMap(smoothedLngLat || currentLngLat, null, 0);
-        setInfoText(null, 0, "나침반");
-      }
-    }
+  navigator.geolocation.watchPosition(
+    pos => {
+      const now = Date.now();
+      if (now - lastGpsAt < 700) return;
+      lastGpsAt = now;
 
-    // =====================================================
-    // GPS
-    // =====================================================
-    function startGPS() {
-      if (!("geolocation" in navigator)) {
-        info.innerHTML = "이 브라우저는 GPS를 지원하지 않습니다.";
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+      const speed = pos.coords.speed;
+      const heading = pos.coords.heading;
+
+      if (accuracy && accuracy > 60) {
+        updateInfo(accuracy, speed, "정확도 낮음");
         return;
       }
 
-      navigator.geolocation.watchPosition(
-        function(position) {
-          const now = Date.now();
+      const raw = [lng, lat];
+      currentLngLat = raw;
 
-          // 너무 잦은 GPS 콜백 방지
-          if (now - lastUpdateAt < 700) return;
-          lastUpdateAt = now;
+      if (heading != null && !isNaN(heading)) {
+        gpsHeading = normalizeDeg(heading);
+      }
 
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
-          const speed = position.coords.speed;
-          const heading = position.coords.heading;
-
-          const raw = [lng, lat];
-
-          // 정확도가 너무 나쁠 때도 완전히 버리면 멈춘 것처럼 보여서,
-          // 50m 초과만 버리고 25m 이상은 정보만 표시.
-          if (accuracy && accuracy > 50) {
-            setInfoText(accuracy, speed, "정확도 낮음");
-            return;
-          }
-
-          if (heading !== null && heading !== undefined && !isNaN(heading)) {
-            gpsHeading = normalizeDeg(heading);
-          }
-
-          currentLngLat = raw;
-
-          // 1.2m 이하 GPS 잡음은 위치 갱신하지 않음. 단 방향은 업데이트 가능.
-          if (smoothedLngLat && distanceMeters(smoothedLngLat, raw) < MIN_MOVE_UPDATE) {
-            const source = chooseHeading(speed);
-            updateMarkerAndMap(smoothedLngLat, accuracy, speed);
-            setInfoText(accuracy, speed, source);
-            return;
-          }
-
-          const posFactor = accuracy && accuracy > MAX_ACCEPT_ACCURACY ? 0.12 : GPS_POS_SMOOTHING;
-          smoothedLngLat = smoothPosition(smoothedLngLat, raw, posFactor);
-
-          const source = chooseHeading(speed);
-          updateMarkerAndMap(smoothedLngLat, accuracy, speed);
-          setInfoText(accuracy, speed, source);
-        },
-        function(error) {
-          let msg = "GPS 오류";
-          if (error.code === 1) msg = "위치 권한이 거부되었습니다.";
-          if (error.code === 2) msg = "현재 위치를 가져올 수 없습니다.";
-          if (error.code === 3) msg = "GPS 요청 시간이 초과되었습니다.";
-
-          info.innerHTML =
-            `${msg}<br>` +
-            `HTTPS 주소인지 확인하고, Safari 위치 권한을 허용하세요.`;
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 1200,
-          timeout: 15000
-        }
-      );
-    }
-
-    // =====================================================
-    // 버튼
-    // =====================================================
-    window.goToMe = function() {
-      const pos = smoothedLngLat || currentLngLat;
-      if (!pos) {
-        alert("아직 GPS 위치를 받지 못했습니다.");
+      if (smoothedLngLat && distanceMeters(smoothedLngLat, raw) < 1.2) {
+        const source = chooseHeading(speed);
+        updateAll(smoothedLngLat, accuracy, speed, source);
         return;
       }
 
-      map.easeTo({
-        center: pos,
-        zoom: Math.max(map.getZoom(), 16.8),
-        duration: 300
+      smoothedLngLat = smoothPosition(smoothedLngLat, raw, accuracy > 25 ? 0.12 : 0.28);
+
+      const source = chooseHeading(speed);
+      updateAll(smoothedLngLat, accuracy, speed, source);
+    },
+    err => {
+      info.innerHTML = "GPS 오류. Safari 위치 권한과 HTTPS 주소를 확인하세요.";
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 15000
+    }
+  );
+}
+
+window.goToMe = function() {
+  if (!navigator.geolocation) {
+    alert("위치 서비스를 지원하지 않습니다.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lng = pos.coords.longitude;
+      const lat = pos.coords.latitude;
+      const now = [lng, lat];
+
+      currentLngLat = now;
+      smoothedLngLat = now;
+
+      map.flyTo({
+        center: now,
+        zoom: 17,
+        speed: 1.6,
+        essential: true
       });
-    };
 
-    window.toggleHeadingUp = function() {
-      headingUp = !headingUp;
+      updateAll(now, pos.coords.accuracy, pos.coords.speed, chooseHeading(pos.coords.speed));
+    },
+    () => alert("현재 위치를 가져오지 못했습니다."),
+    {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 0
+    }
+  );
+};
 
-      if (headingUp) {
-        headingBtn.classList.add("active");
-        headingBtn.innerText = "헤딩업 ON";
+window.toggleHeadingUp = function() {
+  headingUp = !headingUp;
 
-        const pos = smoothedLngLat || currentLngLat;
-        if (pos) {
-          map.easeTo({
-            center: pos,
-            zoom: Math.max(map.getZoom(), 16.8),
-            duration: 300
-          });
-        }
+  if (headingUp) {
+    headingBtn.classList.add("active");
+    headingBtn.innerText = "헤딩업 ON";
 
-        if (!compassEnabled) {
-          info.innerHTML = "제자리 회전 방향을 쓰려면 먼저 🧭 나침반 허용을 누르세요.";
-        }
-      } else {
-        headingBtn.classList.remove("active");
-        headingBtn.innerText = "헤딩업 OFF";
-      }
-    };
+    if (!compassEnabled) {
+      alert("제자리 회전까지 정확히 보려면 먼저 ‘나침반 허용’을 누르세요.");
+    }
 
-    window.northUp = function() {
-      headingUp = false;
-      headingBtn.classList.remove("active");
-      headingBtn.innerText = "헤딩업 OFF";
-
+    if (smoothedLngLat) {
       map.easeTo({
-        bearing: 0,
+        center: smoothedLngLat,
+        bearing: -normalizeDeg(finalHeading),
+        zoom: Math.max(map.getZoom(), 17),
         duration: 250
       });
-    };
-  </script>
+    }
+  } else {
+    headingBtn.classList.remove("active");
+    headingBtn.innerText = "헤딩업 OFF";
+  }
+};
+
+window.northUp = function() {
+  headingUp = false;
+  headingBtn.classList.remove("active");
+  headingBtn.innerText = "헤딩업 OFF";
+
+  map.easeTo({
+    bearing: 0,
+    duration: 250
+  });
+};
+</script>
 </body>
 </html>
