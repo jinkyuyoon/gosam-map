@@ -153,10 +153,10 @@ const HEADING_LINE_METERS = 50;
 
 const MAX_GPS_ACCURACY_DROP = 80;
 const WEAK_GPS_ACCURACY = 25;
-const MIN_MOVE_METERS = 3.0;
+const MIN_MOVE_METERS = 1.0;
 
-const POS_SMOOTH_GOOD = 0.18;
-const POS_SMOOTH_WEAK = 0.08;
+const POS_SMOOTH_GOOD = 0.28;
+const POS_SMOOTH_WEAK = 0.12;
 const COMPASS_SMOOTH = 0.20;
 const GPS_HEAD_SMOOTH = 0.16;
 
@@ -571,7 +571,7 @@ function startGPS() {
   navigator.geolocation.watchPosition(
     pos => {
       const now = Date.now();
-      if (now - lastGpsAt < 700) return;
+      if (now - lastGpsAt < 300) return;
       lastGpsAt = now;
 
       const lat = pos.coords.latitude;
@@ -612,8 +612,8 @@ function startGPS() {
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 500,
-      timeout: 15000
+      maximumAge: 0,
+      timeout: 20000
     }
   );
 }
