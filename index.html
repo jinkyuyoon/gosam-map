@@ -435,9 +435,11 @@ function createHeadingLine() {
 }
 
 function updateHeadingLine(center) {
-  const end = destinationPoint(center, HEADING_LINE_METERS, finalHeading);
-  headingLine.setLatLngs([center, end]);
-  headingLabel.setLatLng(end);
+    const bearing = headingUp ? 0 : finalHeading;
+    const end = destinationPoint(center, HEADING_LINE_METERS, bearing);
+
+    headingLine.setLatLngs([center, end]);
+    headingLabel.setLatLng(end);
 }
 
 /* =========================================================
