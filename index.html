@@ -152,10 +152,10 @@ const HEADING_LINE_METERS = 50;
 
 const MAX_GPS_ACCURACY_DROP = 80;
 const WEAK_GPS_ACCURACY = 25;
-const MIN_MOVE_METERS = 1.1;
+const MIN_MOVE_METERS = 3.0;
 
-const POS_SMOOTH_GOOD = 0.30;
-const POS_SMOOTH_WEAK = 0.13;
+const POS_SMOOTH_GOOD = 0.18;
+const POS_SMOOTH_WEAK = 0.08;
 const COMPASS_SMOOTH = 0.22;
 const GPS_HEAD_SMOOTH = 0.18;
 
@@ -243,8 +243,10 @@ map.on("load", () => {
 });
 
 function markUserInteracting() {
-  userInteractingUntil = Date.now() + 900;
-  followBoat = false;
+  // 사용자가 잠깐 지도를 만져도 Follow를 끄지 않는다.
+  userInteractingUntil = Date.now() + 2000;
+
+  // followBoat = false;   ← 삭제 또는 주석 처리
   updateButtons();
 }
 
@@ -608,7 +610,11 @@ function applyHeadingBearingIfNeeded() {
   lastBearingApplied = target;
 
   // 헤딩ON에서는 center/zoom을 절대 건드리지 않고 bearing만 변경
-  map.setBearing(target);
+ map.easeTo({
+    bearing: target,
+    duration: 200,
+    easing: t => t
+});
 }
 
 function updateAll(pos, accuracy, speed, source) {
@@ -623,7 +629,11 @@ function updateAll(pos, accuracy, speed, source) {
   // 추적ON일 때만 중심 이동. 헤딩ON/OFF와 완전히 분리.
   if (followBoat && !isUserInteracting()) {
     programmatic(() => {
-      map.panTo(pos, { duration: 0 });
+      map.easeTo({
+    center: pos,
+    duration: 500,
+    easing: t => t
+});
     }, 80);
   }
 
@@ -730,7 +740,7 @@ function startGPS() {
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 1000,
+      maximumAge: 500,
       timeout: 15000
     }
   );
