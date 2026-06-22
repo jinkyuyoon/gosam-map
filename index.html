@@ -679,7 +679,7 @@ function addPinHere() {
   lat: currentLatLng.lat,
   lng: currentLatLng.lng,
   name: "Point " + (pins.length + 1),
-  createdAt: Date.now()
+  name: "Point " + Date.now()
 });
 
   localStorage.setItem(
@@ -705,32 +705,21 @@ function loadPins() {
         direction: "top"
       });
 
-    let pressTimer;
+    marker.on("click", () => {
 
-    marker.on("mousedown", () => {
+      if (confirm(`${p.name} 핀을 삭제하시겠습니까?`)) {
 
-      pressTimer = setTimeout(() => {
+        pins.splice(index, 1);
 
-        if (confirm("핀을 삭제하시겠습니까?")) {
+        localStorage.setItem(
+          "gosamPins",
+          JSON.stringify(pins)
+        );
 
-          pins.splice(index, 1);
-
-          localStorage.setItem(
-            "gosamPins",
-            JSON.stringify(pins)
-          );
-
-          loadPins();
-
-        }
-
-      }, 1000);
+        loadPins();
+      }
 
     });
-
-    marker.on("mouseup", () => clearTimeout(pressTimer));
-    marker.on("mouseout", () => clearTimeout(pressTimer));
-
   });
 
 }  
