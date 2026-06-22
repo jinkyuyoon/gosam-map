@@ -131,6 +131,7 @@
   <button id="compassBtn" onclick="enableCompass()" aria-label="나침반" title="나침반">🧭</button>
   <button id="headingBtn" class="dark" onclick="toggleHeadingUp()" aria-label="헤딩업" title="헤딩업">⬆️</button>
   <button id="followBtn" class="dark" onclick="toggleFollow()" aria-label="추적" title="추적">🎯</button>
+  <button id="pinBtn" onclick="addPinHere()" title="핀 추가">📌</button>
 </div>
 
 <script>
@@ -376,9 +377,11 @@ let headingLine = null;
 let headingLabel = null;
 let accuracyCircle = null;
 
+let pinLayer = L.layerGroup().addTo(map);  
+  
 const ringCircles = {};
 const ringLabels = {};
-
+  
 function createRangeRings() {
   RING_METERS.forEach(r => {
     const circle = L.circle(INITIAL_CENTER, {
@@ -449,22 +452,36 @@ function updateHeadingLine(center) {
 
 function ensureAccuracyCircle(center, accuracy){
   const a = Math.max(1, accuracy || 1);
+
+  // 정확도 5m 이하면 숨김
+  if (a <= 3) {
+    if (accuracyCircle) {
+      map.removeLayer(accuracyCircle);
+      accuracyCircle = null;
+    }
+    return;
+  }
+
   let color = "#00C853";
-  if(a>7) color="#FF3B30";
-  else if(a>3) color="#FFD400";
-  if(!accuracyCircle){
-    accuracyCircle=L.circle(center,{
-      radius:a,
-      color:color,
-      fillColor:color,
-      fillOpacity:0.12,
-      weight:2,
-      interactive:false
+  if (a > 7) color = "#FF3B30";
+  else color = "#FFD400";
+
+  if (!accuracyCircle) {
+    accuracyCircle = L.circle(center, {
+      radius: a,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.12,
+      weight: 2,
+      interactive: false
     }).addTo(map);
-  }else{
+  } else {
     accuracyCircle.setLatLng(center);
     accuracyCircle.setRadius(a);
-    accuracyCircle.setStyle({color:color,fillColor:color});
+    accuracyCircle.setStyle({
+      color: color,
+      fillColor: color
+    });
   }
 }
 
@@ -645,6 +662,78 @@ function startGPS() {
   );
 }
 
+function addPinHere() {
+
+  if (!currentLatLng) {
+    alert("현재 위치를 아직 받지 못했습니다.");
+    return;
+  }
+
+  if (!confirm("현재 위치에 핀을 추가하시겠습니까?")) {
+    return;
+  }
+
+  const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
+
+  pins.push({
+  lat: currentLatLng.lat,
+  lng: currentLatLng.lng,
+  name: "Point " + (pins.length + 1),
+  createdAt: Date.now()
+});
+
+  localStorage.setItem(
+    "gosamPins",
+    JSON.stringify(pins)
+  );
+
+  loadPins();
+}
+
+function loadPins() {
+
+  pinLayer.clearLayers();
+
+  const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
+
+  pins.forEach((p, index) => {
+
+    const marker = L.marker([p.lat, p.lng])
+      .addTo(pinLayer)
+      .bindTooltip(p.name, {
+        permanent: true,
+        direction: "top"
+      });
+
+    let pressTimer;
+
+    marker.on("mousedown", () => {
+
+      pressTimer = setTimeout(() => {
+
+        if (confirm("핀을 삭제하시겠습니까?")) {
+
+          pins.splice(index, 1);
+
+          localStorage.setItem(
+            "gosamPins",
+            JSON.stringify(pins)
+          );
+
+          loadPins();
+
+        }
+
+      }, 1000);
+
+    });
+
+    marker.on("mouseup", () => clearTimeout(pressTimer));
+    marker.on("mouseout", () => clearTimeout(pressTimer));
+
+  });
+
+}  
 /* =========================================================
    버튼
 ========================================================= */
@@ -721,6 +810,10 @@ window.toggleFollow = function() {
 ========================================================= */
 createRangeRings();
 createHeadingLine();
+
+// ✅ 저장된 핀 불러오기
+loadPins();
+
 startGPS();
 updateButtons();
 </script>
