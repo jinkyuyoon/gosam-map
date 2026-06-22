@@ -597,45 +597,74 @@ function updateInfo(accuracy, speed, source) {
     `헤딩:<b>${headingUp ? "ON" : "OFF"}</b> · 추적:<b>${followBoat ? "ON" : "OFF"}</b> · ⭕5/10/20/30/40/50m · 🔴50m`;
 }
 
+let lastBearingUpdateAt = 0;
+
 function applyHeadingBearingIfNeeded() {
   if (!headingUp || isUserInteracting()) return;
+
+  const now = Date.now();
+
+  // 방향 센서가 너무 자주 들어오므로 1초에 약 8회만 반영
+  if (now - lastBearingUpdateAt < 120) return;
 
   const target = mapBearingForHeading();
 
   if (lastBearingApplied !== null) {
     const diff = Math.abs(angleDiff(lastBearingApplied, target));
-    if (diff < 1.2) return;
+    if (diff < 3) return;
   }
 
+  lastBearingUpdateAt = now;
   lastBearingApplied = target;
 
-  // 헤딩ON에서는 center/zoom을 절대 건드리지 않고 bearing만 변경
- map.easeTo({
-    bearing: target,
-    duration: 200,
-    easing: t => t
-});
+  // easeTo 쓰지 말 것. 계속 애니메이션이 겹쳐서 끊김.
+  map.setBearing(target);
 }
 
+  let lastCenterUpdateAt = 0;
+  
 function updateAll(pos, accuracy, speed, source) {
   if (!pos) return;
 
   updateBoat(pos);
-  updateRangeRings(pos);
-  updateHeadingLine(pos);
+  if (!window.lastRingUpdate) window.lastRingUpdate = 0;
+
+const now = Date.now();
+
+if (now - window.lastRingUpdate > 1000) {
+    window.lastRingUpdate = now;
+    updateRangeRings(pos);
+}
+  if (!window.lastHeadingLineUpdate) window.lastHeadingLineUpdate = 0;
+
+if (Date.now() - window.lastHeadingLineUpdate > 300) {
+    window.lastHeadingLineUpdate = Date.now();
+    updateHeadingLine(pos);
+}
 
   applyHeadingBearingIfNeeded();
 
-  // 추적ON일 때만 중심 이동. 헤딩ON/OFF와 완전히 분리.
+  // 추적ON일 때만 중심 이동. 0.5초에 한번만
   if (followBoat && !isUserInteracting()) {
-    programmatic(() => {
-      map.easeTo({
-    center: pos,
-    duration: 500,
-    easing: t => t
-});
-    }, 80);
-  }
+
+    if (!window.lastCenterUpdate) {
+        window.lastCenterUpdate = 0;
+    }
+
+    const now = Date.now();
+
+    if (now - window.lastCenterUpdate > 500) {
+
+        window.lastCenterUpdate = now;
+
+        programmatic(() => {
+            map.jumpTo({
+                center: pos
+            });
+        }, 50);
+
+    }
+}
 
   updateInfo(accuracy, speed, source);
 }
