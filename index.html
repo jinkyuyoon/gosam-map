@@ -13,7 +13,6 @@
             background: rgba(255,255,255,0.95);
             padding: 12px; border-radius: 10px;
             z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         #speed {
             position: absolute; bottom: 20px; left: 20px; 
@@ -26,7 +25,6 @@
             border-radius: 10px; z-index: 1000;
         }
         button {
-            margin: 5px 0;
             padding: 10px 14px;
             background: #007aff;
             color: white;
@@ -44,11 +42,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map', { zoomControl: true }).setView([37.082, 127.283], 15);
-        
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        const map = L.map('map', {
+            zoomControl: true,
+            rotation: true   // 회전(Heading Up) 활성화
+        }).setView([37.082, 127.283], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         // 갈수기 이미지
         const imageUrl = 'gosam-low-water.jpg';
@@ -56,7 +55,7 @@
             [37.09483, 127.269358],
             [37.0727, 127.2971]
         ];
-        L.imageOverlay(imageUrl, bounds, {opacity: 0.95}).addTo(map);
+        L.imageOverlay(imageUrl, bounds, {opacity: 0.92}).addTo(map);
 
         let boatMarker = null;
         let targetMarker = null;
@@ -75,64 +74,68 @@
 
                     currentPosition = [lat, lng];
 
-                    // 마커 업데이트
                     if (!boatMarker) {
-                        boatMarker = L.marker([lat, lng], {
-                            icon: L.divIcon({className: 'custom-marker', html: '🚤', iconSize: [40, 40]})
-                        }).addTo(map).bindPopup('현재 보트 위치');
+                        boatMarker = L.marker([lat, lng]).addTo(map)
+                            .bindPopup('🚤 현재 위치').openPopup();
                     } else {
                         boatMarker.setLatLng([lat, lng]);
                     }
 
-                    // 정보 업데이트
                     info.innerHTML = `📍 위도: ${lat.toFixed(6)}<br>경도: ${lng.toFixed(6)}`;
 
-                    // 속도
                     document.getElementById('speed').innerHTML = `속도: ${speed} km/h`;
 
-                    // 거리
                     if (targetLatLng) {
                         const dist = map.distance(currentPosition, targetLatLng).toFixed(0);
                         document.getElementById('distance').innerHTML = `목표까지: ${dist} m`;
                     }
+
+                    // Heading Up (이동 방향이 위로)
+                    if (heading) {
+                        map.setBearing(heading);
+                    }
                 },
-                function(error) { /* 에러 처리 */ },
+                function(error) {
+                    let msg = 'GPS 오류: ';
+                    if (error.code === error.PERMISSION_DENIED) msg += '위치 권한을 허용해주세요.';
+                    else msg += '위치 정보를 가져올 수 없습니다.';
+                    info.innerHTML = msg;
+                },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
         }
 
         // 내 위치로 이동 버튼
         L.control({position: 'topright'}).addTo(map).getContainer().innerHTML = 
-            '<button onclick="goToMyLocation()">📍 내 위치로 이동</button>';
+            '<button onclick="goToMyLocation()" style="margin:8px;">📍 내 위치로</button>';
 
         window.goToMyLocation = function() {
             if (currentPosition) {
-                map.setView(currentPosition, map.getZoom(), { animate: true });
-            } else {
-                alert("아직 GPS 위치를 받지 못했습니다.");
+                map.setView(currentPosition, map.getZoom());
             }
         };
 
-        // 지도 클릭으로 목표지점 설정
+        // 목표지점 설정
         map.on('click', function(e) {
             if (targetMarker) targetMarker.setLatLng(e.latlng);
             else targetMarker = L.marker(e.latlng).addTo(map).bindPopup('목표지점');
             targetLatLng = e.latlng;
         });
 
-        // 1m 단위 격자 (간단한 Grid)
+        // 10m 단위 격자 (줌이 가까울 때 보임)
         L.GridLayer.Grid = L.GridLayer.extend({
             createTile: function(coords) {
                 const tile = L.DomUtil.create('div', 'leaflet-tile');
-                tile.style.outline = '1px solid rgba(0,0,255,0.3)';
-                tile.style.fontSize = '10px';
+                tile.style.outline = '1px solid rgba(0, 180, 255, 0.4)';
+                tile.style.fontSize = '11px';
+                tile.style.color = 'rgba(0,100,200,0.6)';
                 tile.style.display = 'flex';
                 tile.style.alignItems = 'center';
                 tile.style.justifyContent = 'center';
                 return tile;
             }
         });
-        new L.GridLayer.Grid({minZoom: 16, maxZoom: 20, tileSize: 256}).addTo(map);
+        new L.GridLayer.Grid({minZoom: 15, maxZoom: 22, tileSize: 256}).addTo(map);
 
         window.onload = startGPS;
     </script>
