@@ -39,17 +39,14 @@
     <script>
         const map = L.map('map').setView([37.082, 127.283], 15);
 
-        // === 구글 위성지도로 변경 ===
+        // 구글 위성지도
         L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
             attribution: '&copy; Google Maps',
             maxZoom: 20
         }).addTo(map);
 
         const imageUrl = 'gosam-low-water.jpg';
-        const bounds = [
-            [37.09483, 127.269358],
-            [37.0727, 127.2971]
-        ];
+        const bounds = [[37.09483, 127.269358], [37.0727, 127.2971]];
         L.imageOverlay(imageUrl, bounds, {opacity: 0.92}).addTo(map);
 
         let boatMarker = null;
@@ -63,7 +60,8 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     const accuracy = Math.round(position.coords.accuracy);
-                    
+                    const heading = position.coords.heading;
+
                     currentPosition = [lat, lng];
 
                     info.innerHTML = `📍 정확도: ${accuracy}m`;
@@ -73,11 +71,16 @@
                     } else {
                         boatMarker.setLatLng([lat, lng]);
                     }
+
+                    // === Heading Up ===
+                    if (heading !== null && heading !== undefined) {
+                        map.setBearing(heading);
+                    }
                 },
                 function(error) {
                     info.innerHTML = 'GPS 오류: 위치 권한을 허용해주세요.<br><button onclick="startGPS()">다시 시도</button>';
                 },
-                { enableHighAccuracy: true }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
             );
         }
 
