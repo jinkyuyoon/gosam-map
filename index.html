@@ -92,26 +92,26 @@
     }
 
     .ring-label {
-      color: #FFD400;
+      color: #7CFC00;
       font-size: 10px;
       font-weight: 800;
       text-shadow:
-        -1px -1px 0 #fff,
-         1px -1px 0 #fff,
-        -1px  1px 0 #fff,
-         1px  1px 0 #fff;
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
       white-space: nowrap;
     }
 
     .heading-label {
-      color: #FFD400;
+      color: #FF00FF;
       font-size: 11px;
       font-weight: 900;
       text-shadow:
-        -1px -1px 0 #fff,
-         1px -1px 0 #fff,
-        -1px  1px 0 #fff,
-         1px  1px 0 #fff;
+        -1px -1px 0 #000,
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000;
       white-space: nowrap;
     }
 
@@ -143,7 +143,7 @@
 const IMAGE_URL = "gosam-low-water-optimized.jpg";
 
 const INITIAL_CENTER = [37.082, 127.283];
-const INITIAL_ZOOM = 15;
+const INITIAL_ZOOM = 18;
 
 // Leaflet bounds: [[south, west], [north, east]]
 const IMAGE_BOUNDS = [
@@ -385,10 +385,11 @@ function createRangeRings() {
   RING_METERS.forEach(r => {
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
-      color: "#FFD400",
-      weight: [20,30,40,50].includes(r) ? 2 : 1,
-      opacity: [20,30,40,50].includes(r) ? 0.88 : 0.45,
-      fillOpacity: 0.03,
+      color: "#7CFC00",
+      fillColor: "#7CFC00",
+      weight: [20,30,40,50].includes(r) ? 3 : 1.5,
+      opacity: [20,30,40,50].includes(r) ? 1.0 : 0.65,
+      fillOpacity: 0.04,
       interactive: false
     }).addTo(ringLayer);
 
@@ -646,7 +647,7 @@ window.goToMe = function() {
       const source = chooseHeading(pos.coords.speed);
 
       programmatic(() => {
-        map.setView(now, Math.max(map.getZoom(), 17), { animate: true });
+        map.setView(now, Math.max(map.getZoom(), 19), { animate: true });
       }, 500);
 
       updateAll(now, pos.coords.accuracy, pos.coords.speed, source);
