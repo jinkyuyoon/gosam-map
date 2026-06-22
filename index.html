@@ -408,7 +408,9 @@ function createRangeRings() {
 function updateRangeRings(center) {
   RING_METERS.forEach(r => {
     ringCircles[r].setLatLng(center);
-    ringLabels[r].setLatLng(destinationPoint(center, r, 90));
+    ringLabels[r].setLatLng(
+    destinationPoint(center, r, headingUp ? finalHeading : 0)
+    );
   });
 }
 
