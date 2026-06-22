@@ -11,8 +11,11 @@
         #info {
             position: absolute; top: 60px; left: 15px;
             background: rgba(255,255,255,0.95);
-            padding: 15px; border-radius: 10px;
-            z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 12px 16px; 
+            border-radius: 10px;
+            z-index: 1000; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         button {
             position: absolute;
@@ -31,7 +34,7 @@
 </head>
 <body>
     <div id="map"></div>
-    <div id="info">GPS 불러오는 중... 위치 권한을 허용해주세요</div>
+    <div id="info">GPS 불러오는 중...</div>
     <button onclick="goToMyLocation()">📍 내 위치로</button>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -56,11 +59,13 @@
                 function(position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
+                    const accuracy = Math.round(position.coords.accuracy);
                     
                     currentPosition = [lat, lng];
 
-                    info.innerHTML = `📍 위도: ${lat.toFixed(6)}<br>경도: ${lng.toFixed(6)}<br>정확도: ${Math.round(position.coords.accuracy)}m`;
-                    
+                    // 정확도만 표시
+                    info.innerHTML = `📍 정확도: ${accuracy}m`;
+
                     if (!boatMarker) {
                         boatMarker = L.marker([lat, lng]).addTo(map).bindPopup('현재 위치');
                     } else {
@@ -74,7 +79,6 @@
             );
         }
 
-        // 내 위치로 이동 버튼 기능
         window.goToMyLocation = function() {
             if (currentPosition) {
                 map.setView(currentPosition, map.getZoom(), {animate: true});
