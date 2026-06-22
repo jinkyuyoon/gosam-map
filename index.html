@@ -341,7 +341,7 @@ function createBoatIcon(rotation) {
 function getBoatRotation() {
   // 헤딩업 ON: 지도 자체가 회전하므로 보트는 화면 위쪽 고정
   // 헤딩업 OFF: 보트 아이콘이 나침반/방향값을 따라 회전
-  return headingUp ? 192 : finalHeading;
+  return headingUp ? 180 : finalHeading;
 }
 
 function updateBoatRotationOnly() {
