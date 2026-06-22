@@ -155,8 +155,8 @@ const MAX_GPS_ACCURACY_DROP = 80;
 const WEAK_GPS_ACCURACY = 25;
 const MIN_MOVE_METERS = 1.0;
 
-const POS_SMOOTH_GOOD = 0.28;
-const POS_SMOOTH_WEAK = 0.12;
+const POS_SMOOTH_GOOD = 0.45;
+const POS_SMOOTH_WEAK = 0.25;
 const COMPASS_SMOOTH = 0.20;
 const GPS_HEAD_SMOOTH = 0.16;
 
@@ -573,7 +573,7 @@ function startGPS() {
   navigator.geolocation.watchPosition(
     pos => {
       const now = Date.now();
-      if (now - lastGpsAt < 300) return;
+      if (now - lastGpsAt < 700) return;
       lastGpsAt = now;
 
       const lat = pos.coords.latitude;
