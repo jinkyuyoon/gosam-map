@@ -2,25 +2,37 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>고삼저수지 갈수기 GPS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin:0; padding:0; }
-        #map { height: 100vh; width: 100%; }
+        body { 
+            margin:0; 
+            padding:0; 
+            overflow: hidden;
+        }
+        #map { 
+            height: 100vh; 
+            width: 100%; 
+        }
         #info {
-            position: absolute; top: 10px; left: 10px;
+            position: absolute; 
+            top: max(10px, env(safe-area-inset-top)); 
+            left: 10px;
             background: rgba(255,255,255,0.95);
-            padding: 12px; border-radius: 10px;
-            z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            padding: 15px; 
+            border-radius: 10px;
+            z-index: 1000; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
         }
         #speed {
-            position: absolute; bottom: 20px; left: 20px; 
+            position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 20px; 
             background: rgba(255,255,255,0.95); padding: 10px 14px; 
             border-radius: 10px; z-index: 1000; font-weight: bold;
         }
         #distance {
-            position: absolute; bottom: 75px; left: 20px; 
+            position: absolute; bottom: max(75px, env(safe-area-inset-bottom) + 55px); left: 20px; 
             background: rgba(255,255,255,0.95); padding: 10px 14px; 
             border-radius: 10px; z-index: 1000;
         }
@@ -30,7 +42,10 @@
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 15px;
+        }
+        .boat-arrow {
+            font-size: 28px;
+            transition: transform 0.3s ease;
         }
     </style>
 </head>
@@ -42,14 +57,12 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map', {
-            zoomControl: true,
-            rotation: true   // 회전(Heading Up) 활성화
-        }).setView([37.082, 127.283], 15);
+        const map = L.map('map').setView([37.082, 127.283], 15);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        // 갈수기 이미지
         const imageUrl = 'gosam-low-water.jpg';
         const bounds = [
             [37.09483, 127.269358],
@@ -75,10 +88,21 @@
                     currentPosition = [lat, lng];
 
                     if (!boatMarker) {
-                        boatMarker = L.marker([lat, lng]).addTo(map)
-                            .bindPopup('🚤 현재 위치').openPopup();
+                        boatMarker = L.marker([lat, lng], {
+                            icon: L.divIcon({
+                                className: 'boat-arrow',
+                                html: '➤',
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16]
+                            })
+                        }).addTo(map).bindPopup('🚤 현재 보트');
                     } else {
                         boatMarker.setLatLng([lat, lng]);
+                    }
+
+                    if (heading) {
+                        boatMarker.getElement().style.transform = `rotate(${heading}deg)`;
+                        map.setBearing(heading);
                     }
 
                     info.innerHTML = `📍 위도: ${lat.toFixed(6)}<br>경도: ${lng.toFixed(6)}`;
@@ -89,53 +113,39 @@
                         const dist = map.distance(currentPosition, targetLatLng).toFixed(0);
                         document.getElementById('distance').innerHTML = `목표까지: ${dist} m`;
                     }
-
-                    // Heading Up (이동 방향이 위로)
-                    if (heading) {
-                        map.setBearing(heading);
-                    }
                 },
                 function(error) {
                     let msg = 'GPS 오류: ';
-                    if (error.code === error.PERMISSION_DENIED) msg += '위치 권한을 허용해주세요.';
+                    if (error.code === 1) msg += '위치 권한을 허용해주세요.<br><button onclick="startGPS()">다시 시도</button>';
                     else msg += '위치 정보를 가져올 수 없습니다.';
                     info.innerHTML = msg;
                 },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         }
 
-        // 내 위치로 이동 버튼
         L.control({position: 'topright'}).addTo(map).getContainer().innerHTML = 
-            '<button onclick="goToMyLocation()" style="margin:8px;">📍 내 위치로</button>';
+            '<button onclick="goToMyLocation()" style="margin:12px 12px 0 0;">📍 내 위치로</button>';
 
         window.goToMyLocation = function() {
-            if (currentPosition) {
-                map.setView(currentPosition, map.getZoom());
-            }
+            if (currentPosition) map.setView(currentPosition, map.getZoom(), {animate: true});
         };
 
-        // 목표지점 설정
         map.on('click', function(e) {
             if (targetMarker) targetMarker.setLatLng(e.latlng);
             else targetMarker = L.marker(e.latlng).addTo(map).bindPopup('목표지점');
             targetLatLng = e.latlng;
         });
 
-        // 10m 단위 격자 (줌이 가까울 때 보임)
+        // 10m 격자
         L.GridLayer.Grid = L.GridLayer.extend({
-            createTile: function(coords) {
+            createTile: function() {
                 const tile = L.DomUtil.create('div', 'leaflet-tile');
                 tile.style.outline = '1px solid rgba(0, 180, 255, 0.4)';
-                tile.style.fontSize = '11px';
-                tile.style.color = 'rgba(0,100,200,0.6)';
-                tile.style.display = 'flex';
-                tile.style.alignItems = 'center';
-                tile.style.justifyContent = 'center';
                 return tile;
             }
         });
-        new L.GridLayer.Grid({minZoom: 15, maxZoom: 22, tileSize: 256}).addTo(map);
+        new L.GridLayer.Grid({minZoom: 16, maxZoom: 22}).addTo(map);
 
         window.onload = startGPS;
     </script>
