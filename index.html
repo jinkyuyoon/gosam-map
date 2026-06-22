@@ -24,6 +24,7 @@
     #map {
       width: 100%;
       height: 100dvh;
+      background: #111;
     }
 
     #info {
@@ -31,7 +32,7 @@
       top: calc(8px + env(safe-area-inset-top));
       left: 8px;
       right: 64px;
-      z-index: 9;
+      z-index: 20;
       background: rgba(255,255,255,0.88);
       color: #111;
       padding: 6px 8px;
@@ -45,12 +46,11 @@
       -webkit-backdrop-filter: blur(4px);
     }
 
-    /* iPhone Safari 하단 UI를 피하기 위해 버튼은 우측 세로 고정 */
     .controls {
       position: absolute;
       top: calc(76px + env(safe-area-inset-top));
       right: 8px;
-      z-index: 10;
+      z-index: 30;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -74,14 +74,8 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    button.dark {
-      background: rgba(25,25,25,0.92);
-    }
-
-    button.active {
-      background: rgba(255,149,0,0.98);
-      color: #111;
-    }
+    button.dark { background: rgba(25,25,25,0.92); }
+    button.active { background: rgba(255,149,0,0.98); color: #111; }
 
     .boat {
       width: 52px;
@@ -90,30 +84,29 @@
       will-change: transform;
     }
 
-    .maplibregl-ctrl-bottom-left,
-    .maplibregl-ctrl-bottom-right {
+    /* 헤딩업 ON에서 쓰는 화면 고정 보트 */
+    #fixedBoat {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 56px;
+      height: 56px;
+      margin-left: -28px;
+      margin-top: -28px;
+      z-index: 25;
+      pointer-events: none;
       display: none;
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,0.45));
     }
 
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right { display: none; }
+
     @media (max-width: 390px) {
-      #info {
-        right: 58px;
-        font-size: 10px;
-      }
-      .controls {
-        right: 7px;
-        gap: 7px;
-      }
-      button {
-        width: 42px;
-        height: 42px;
-        font-size: 18px;
-        line-height: 42px;
-      }
-      .boat {
-        width: 48px;
-        height: 48px;
-      }
+      #info { right: 58px; font-size: 10px; }
+      .controls { right: 7px; gap: 7px; }
+      button { width: 42px; height: 42px; font-size: 18px; line-height: 42px; }
+      .boat { width: 48px; height: 48px; }
     }
   </style>
 </head>
@@ -122,6 +115,8 @@
 <div id="map"></div>
 
 <div id="info">GPS 준비 중...</div>
+
+<div id="fixedBoat"></div>
 
 <div class="controls">
   <button id="locBtn" onclick="goToMe()" aria-label="내 위치" title="내 위치">📍</button>
@@ -132,7 +127,7 @@
 
 <script>
 /* =========================================================
-   기본 설정
+   설정
 ========================================================= */
 const IMAGE_URL = "gosam-low-water-optimized.jpg";
 
@@ -146,7 +141,6 @@ const IMAGE_COORDINATES = [
 const INITIAL_CENTER = [127.283, 37.082];
 const INITIAL_ZOOM = 14.8;
 
-// 화면 복잡도를 줄이기 위해 핵심 거리만 표시
 const RING_METERS = [5,10,20,30,40,50];
 const HEADING_LINE_METERS = 50;
 
@@ -156,11 +150,18 @@ const MIN_MOVE_METERS = 3.0;
 
 const POS_SMOOTH_GOOD = 0.18;
 const POS_SMOOTH_WEAK = 0.08;
-const COMPASS_SMOOTH = 0.22;
-const GPS_HEAD_SMOOTH = 0.18;
+const COMPASS_SMOOTH = 0.18;
+const GPS_HEAD_SMOOTH = 0.16;
 
-// 방향이 반대로 보이면 여기만 -1로 바꾸면 됩니다.
-const MAP_BEARING_SIGN = 1;
+/*
+  핵심:
+  MapLibre bearing을 계속 돌리는 대신, 최종 화면 레이어를 CSS로 회전시킨다.
+  iPhone Safari에서 훨씬 가볍다.
+  방향이 반대로 보이면 -1로 변경.
+*/
+const VISUAL_ROTATE_SIGN = -1;
+const CSS_ROTATE_LERP = 0.16;
+const CSS_ROTATE_MIN_DIFF = 0.25;
 
 /* =========================================================
    지도
@@ -171,8 +172,8 @@ const map = new maplibregl.Map({
   zoom: INITIAL_ZOOM,
   bearing: 0,
   pitch: 0,
-  dragRotate: true,
-  touchZoomRotate: true,
+  dragRotate: false,
+  touchZoomRotate: false,
   attributionControl: false,
   style: {
     version: 8,
@@ -184,9 +185,7 @@ const map = new maplibregl.Map({
         attribution: "© OpenStreetMap"
       }
     },
-    layers: [
-      { id: "osm", type: "raster", source: "osm" }
-    ]
+    layers: [{ id: "osm", type: "raster", source: "osm" }]
   }
 });
 
@@ -197,6 +196,7 @@ const info = document.getElementById("info");
 const compassBtn = document.getElementById("compassBtn");
 const headingBtn = document.getElementById("headingBtn");
 const followBtn = document.getElementById("followBtn");
+const fixedBoat = document.getElementById("fixedBoat");
 
 let headingUp = false;
 let followBoat = false;
@@ -211,10 +211,11 @@ let finalHeading = 0;
 
 let boatMarker = null;
 let lastGpsAt = 0;
-let lastBearingApplied = null;
+let lastCenterUpdateAt = 0;
 
-// 사용자가 지도 조작 중이면 회전/추적 갱신을 멈춘다
-let userInteractingUntil = 0;
+let visualRotationCurrent = 0;
+let visualRotationTarget = 0;
+let mapCanvasContainer = null;
 
 /* =========================================================
    지도 로드
@@ -230,43 +231,17 @@ map.on("load", () => {
     id: "low-water-layer",
     type: "raster",
     source: "low-water",
-    paint: {
-      "raster-opacity": 0.92,
-      "raster-fade-duration": 0
-    }
+    paint: { "raster-opacity": 0.92, "raster-fade-duration": 0 }
   });
 
   createRangeRings();
   createHeadingLine();
+  createFixedBoat();
+  cacheCanvasContainer();
+  startVisualRotationLoop();
   startGPS();
   updateButtons();
 });
-
-function markUserInteracting() {
-  // 사용자가 잠깐 지도를 만져도 Follow를 끄지 않는다.
-  userInteractingUntil = Date.now() + 2000;
-
-  // followBoat = false;   ← 삭제 또는 주석 처리
-  updateButtons();
-}
-
-["dragstart", "zoomstart", "rotatestart", "pitchstart", "movestart"].forEach(ev => {
-  map.on(ev, () => {
-    if (!map._programmaticMove) markUserInteracting();
-  });
-});
-
-function isUserInteracting() {
-  return Date.now() < userInteractingUntil;
-}
-
-function programmatic(fn, duration = 350) {
-  map._programmaticMove = true;
-  fn();
-  setTimeout(() => {
-    map._programmaticMove = false;
-  }, duration);
-}
 
 /* =========================================================
    유틸
@@ -300,11 +275,7 @@ function distanceMeters(a, b) {
   const lat2 = b[1] * Math.PI / 180;
   const dLat = (b[1] - a[1]) * Math.PI / 180;
   const dLng = (b[0] - a[0]) * Math.PI / 180;
-
-  const x =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-
+  const x = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
@@ -337,10 +308,6 @@ function formatHeading(h) {
   return Math.round(normalizeDeg(h)) + "°";
 }
 
-function mapBearingForHeading() {
-  return normalizeDeg(finalHeading * MAP_BEARING_SIGN);
-}
-
 function updateButtons() {
   compassBtn.classList.toggle("active", compassEnabled);
   headingBtn.classList.toggle("active", headingUp);
@@ -348,43 +315,72 @@ function updateButtons() {
 }
 
 /* =========================================================
+   CSS 기반 헤딩업 회전
+========================================================= */
+function cacheCanvasContainer() {
+  mapCanvasContainer = document.querySelector(".maplibregl-canvas-container");
+  if (mapCanvasContainer) {
+    mapCanvasContainer.style.transformOrigin = "50% 50%";
+    mapCanvasContainer.style.willChange = "transform";
+  }
+}
+
+function updateVisualRotationTarget() {
+  visualRotationTarget = headingUp ? normalizeDeg(finalHeading * VISUAL_ROTATE_SIGN) : 0;
+}
+
+function startVisualRotationLoop() {
+  requestAnimationFrame(visualRotationLoop);
+}
+
+function visualRotationLoop() {
+  requestAnimationFrame(visualRotationLoop);
+
+  if (!mapCanvasContainer) cacheCanvasContainer();
+  if (!mapCanvasContainer) return;
+
+  updateVisualRotationTarget();
+
+  const diff = angleDiff(visualRotationCurrent, visualRotationTarget);
+  if (Math.abs(diff) < CSS_ROTATE_MIN_DIFF) return;
+
+  visualRotationCurrent = normalizeDeg(visualRotationCurrent + diff * CSS_ROTATE_LERP);
+
+  // MapLibre 재렌더링 없이 최종 화면만 GPU로 회전
+  mapCanvasContainer.style.transform = `rotate(${visualRotationCurrent}deg)`;
+}
+
+/* =========================================================
    보트 아이콘
 ========================================================= */
-function makeBoatElement() {
-  const el = document.createElement("div");
-  el.className = "boat";
-  el.innerHTML = `
-    <svg width="52" height="52" viewBox="0 0 64 64">
+function boatSvg(size = 52) {
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 64 64">
       <defs>
-        <filter id="boatShadow" x="-30%" y="-30%" width="160%" height="160%">
+        <filter id="boatShadow${size}" x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-opacity="0.48"/>
         </filter>
       </defs>
-
-      <g filter="url(#boatShadow)">
-        <path
-          d="M32 4
-             C42 16 48 34 42 54
-             C39 60 25 60 22 54
-             C16 34 22 16 32 4 Z"
-          fill="#007aff"
-          stroke="#ffffff"
-          stroke-width="3.5"
-          stroke-linejoin="round"
-        />
-        <path
-          d="M32 9
-             C38 21 41 36 36 51
-             C35 54 29 54 28 51
-             C23 36 26 21 32 9 Z"
-          fill="rgba(255,255,255,0.28)"
-        />
+      <g filter="url(#boatShadow${size})">
+        <path d="M32 4 C42 16 48 34 42 54 C39 60 25 60 22 54 C16 34 22 16 32 4 Z"
+          fill="#007aff" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+        <path d="M32 9 C38 21 41 36 36 51 C35 54 29 54 28 51 C23 36 26 21 32 9 Z"
+          fill="rgba(255,255,255,0.28)"/>
         <path d="M32 4 L39 20 L32 16 L25 20 Z" fill="#ffffff" opacity="0.95"/>
         <circle cx="32" cy="39" r="5.5" fill="#ffffff" opacity="0.96"/>
       </g>
-    </svg>
-  `;
+    </svg>`;
+}
+
+function makeBoatElement() {
+  const el = document.createElement("div");
+  el.className = "boat";
+  el.innerHTML = boatSvg(52);
   return el;
+}
+
+function createFixedBoat() {
+  fixedBoat.innerHTML = boatSvg(56);
 }
 
 function updateBoat(pos) {
@@ -398,12 +394,21 @@ function updateBoat(pos) {
     boatMarker.setLngLat(pos);
   }
 
-  const el = boatMarker.getElement();
+  const markerEl = boatMarker.getElement();
 
-  // 헤딩ON: 배는 화면 위 고정. 지도만 회전.
-  // 헤딩OFF: 지도 북쪽 고정. 배가 실제 방향으로 회전.
-  const rotation = headingUp ? 0 : finalHeading;
-  el.style.transform = `translate(-50%, -50%) rotate(${normalizeDeg(rotation)}deg)`;
+  if (headingUp && followBoat) {
+    // 헤딩업+추적 모드에서는 화면 중앙 고정 보트 사용
+    fixedBoat.style.display = "block";
+    markerEl.style.display = "none";
+  } else {
+    fixedBoat.style.display = "none";
+    markerEl.style.display = "block";
+
+    // 헤딩업만 ON이고 추적은 OFF인 경우: 맵 위 마커는 화면상 위를 향하게 보정
+    // 헤딩OFF: 실제 방향으로 회전
+    const rotation = headingUp ? 0 : finalHeading;
+    markerEl.style.transform = `translate(-50%, -50%) rotate(${normalizeDeg(rotation)}deg)`;
+  }
 }
 
 /* =========================================================
@@ -414,7 +419,6 @@ function circlePolygon(center, radiusMeters, points = 96) {
   for (let i = 0; i <= points; i++) {
     coords.push(destinationPoint(center, radiusMeters, 360 * i / points));
   }
-
   return {
     type: "Feature",
     properties: { radius: radiusMeters },
@@ -426,10 +430,7 @@ function labelPoint(center, radiusMeters) {
   return {
     type: "Feature",
     properties: { label: radiusMeters + "m", radius: radiusMeters },
-    geometry: {
-      type: "Point",
-      coordinates: destinationPoint(center, radiusMeters, 90)
-    }
+    geometry: { type: "Point", coordinates: destinationPoint(center, radiusMeters, 90) }
   };
 }
 
@@ -443,10 +444,7 @@ function createRangeRings() {
     id: "range-rings-fill",
     type: "fill",
     source: "range-rings",
-    paint: {
-      "fill-color": "#007aff",
-      "fill-opacity": 0.010
-    }
+    paint: { "fill-color": "#007aff", "fill-opacity": 0.010 }
   });
 
   map.addLayer({
@@ -455,18 +453,8 @@ function createRangeRings() {
     source: "range-rings",
     paint: {
       "line-color": "#007aff",
-      "line-width": [
-        "case",
-        ["in", ["get", "radius"], ["literal", [20,30,40,50]]],
-        2.0,
-        0.9
-      ],
-      "line-opacity": [
-        "case",
-        ["in", ["get", "radius"], ["literal", [20,30,40,50]]],
-        0.88,
-        0.45
-      ]
+      "line-width": ["case", ["in", ["get", "radius"], ["literal", [20,30,40,50]]], 2.0, 0.9],
+      "line-opacity": ["case", ["in", ["get", "radius"], ["literal", [20,30,40,50]]], 0.88, 0.45]
     }
   });
 
@@ -597,63 +585,24 @@ function updateInfo(accuracy, speed, source) {
     `헤딩:<b>${headingUp ? "ON" : "OFF"}</b> · 추적:<b>${followBoat ? "ON" : "OFF"}</b> · ⭕5/10/20/30/40/50m · 🔴50m`;
 }
 
-let lastBearingUpdateAt = 0;
-
-function applyHeadingBearingIfNeeded() {
-  if (!headingUp || isUserInteracting()) return;
-
-  const now = Date.now();
-
-  // iPhone Safari에서 지도 회전은 무겁다.
-  // 너무 자주 돌리면 끊기므로 0.25초에 한 번만 반영.
-  if (now - lastBearingUpdateAt < 250) return;
-
-  const target = mapBearingForHeading();
-
-  if (lastBearingApplied !== null) {
-    const diff = Math.abs(angleDiff(lastBearingApplied, target));
-
-    // 6도 미만 변화는 무시해서 미세 떨림 제거
-    if (diff < 6) return;
-  }
-
-  lastBearingUpdateAt = now;
-  lastBearingApplied = target;
-
-  // easeTo/RAF 금지. 회전 애니메이션이 겹치면 더 끊긴다.
-  map.setBearing(target);
-}
-
-  let lastCenterUpdateAt = 0;
-  
 function updateAll(pos, accuracy, speed, source) {
   if (!pos) return;
 
-  // GPS 이벤트에서만 무거운 객체 갱신
   updateBoat(pos);
   updateRangeRings(pos);
   updateHeadingLine(pos);
 
-  applyHeadingBearingIfNeeded();
-
-  // 추적ON일 때만 중심 이동. 너무 잦은 이동은 제한.
-  if (followBoat && !isUserInteracting()) {
+  if (followBoat) {
     const now = Date.now();
 
-    if (!window.lastCenterUpdate) {
-      window.lastCenterUpdate = 0;
-    }
+    if (now - lastCenterUpdateAt > 350) {
+      lastCenterUpdateAt = now;
 
-    if (now - window.lastCenterUpdate > 500) {
-      window.lastCenterUpdate = now;
-
-      programmatic(() => {
-        map.easeTo({
-          center: pos,
-          duration: 350,
-          easing: t => t
-        });
-      }, 420);
+      map.easeTo({
+        center: pos,
+        duration: 260,
+        easing: t => t
+      });
     }
   }
 
@@ -700,10 +649,7 @@ function onOrientation(e) {
   compassHeading = smoothAngle(compassHeading, normalizeDeg(h), COMPASS_SMOOTH);
   const source = chooseHeading(0);
 
-  // 핵심:
-  // 나침반 이벤트에서는 updateAll() 호출 금지.
-  // 보트/거리링/진행선을 매번 다시 그리면 Safari에서 심하게 끊긴다.
-  applyHeadingBearingIfNeeded();
+  // 나침반에서는 방향값과 정보만 갱신. 무거운 GeoJSON 갱신 없음.
   updateInfo(null, 0, source);
 }
 
@@ -746,9 +692,7 @@ function startGPS() {
         return;
       }
 
-      const factor = accuracy && accuracy > WEAK_GPS_ACCURACY
-        ? POS_SMOOTH_WEAK
-        : POS_SMOOTH_GOOD;
+      const factor = accuracy && accuracy > WEAK_GPS_ACCURACY ? POS_SMOOTH_WEAK : POS_SMOOTH_GOOD;
 
       smoothedLngLat = smoothPosition(smoothedLngLat, raw, factor);
 
@@ -789,15 +733,11 @@ window.goToMe = function() {
 
       const source = chooseHeading(pos.coords.speed);
 
-      programmatic(() => {
-        map.flyTo({
-          center: now,
-          zoom: Math.max(map.getZoom(), 17),
-          bearing: headingUp ? mapBearingForHeading() : map.getBearing(),
-          speed: 1.4,
-          essential: true
-        });
-      }, 650);
+      map.easeTo({
+        center: now,
+        zoom: Math.max(map.getZoom(), 17),
+        duration: 300
+      });
 
       updateAll(now, pos.coords.accuracy, pos.coords.speed, source);
       updateButtons();
@@ -815,18 +755,14 @@ window.toggleHeadingUp = function() {
   headingUp = !headingUp;
 
   if (!headingUp) {
-    lastBearingApplied = 0;
-    programmatic(() => {
-      map.easeTo({
-        bearing: 0,
-        duration: 160
-      });
-    }, 220);
+    visualRotationTarget = 0;
   } else {
     if (!compassEnabled) {
       alert("제자리 회전까지 정확히 보려면 먼저 ‘나침반’을 누르세요.");
     }
-    applyHeadingBearingIfNeeded();
+
+    // 헤딩업을 켤 때 현장 사용 기준으로 추적도 켜준다.
+    if (smoothedLngLat) followBoat = true;
   }
 
   if (smoothedLngLat) updateAll(smoothedLngLat, null, 0, chooseHeading(0));
@@ -837,15 +773,14 @@ window.toggleFollow = function() {
   followBoat = !followBoat;
 
   if (followBoat && smoothedLngLat) {
-    programmatic(() => {
-      map.easeTo({
-        center: smoothedLngLat,
-        zoom: Math.max(map.getZoom(), 17),
-        duration: 180
-      });
-    }, 230);
+    map.easeTo({
+      center: smoothedLngLat,
+      zoom: Math.max(map.getZoom(), 17),
+      duration: 220
+    });
   }
 
+  if (smoothedLngLat) updateBoat(smoothedLngLat);
   updateButtons();
 };
 </script>
