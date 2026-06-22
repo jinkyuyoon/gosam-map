@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>고삼저수지 보트 GPS</title>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #111;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    /* 세로폰 전용: 버튼은 하단 원형 아이콘으로 고정 */
+    .controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      pointer-events: none;
+      padding: 0 10px;
+      box-sizing: border-box;
+    }
+
+    button {
+      pointer-events: auto;
+      width: 46px;
+      height: 46px;
+      min-width: 46px;
+      min-height: 46px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(0,122,255,0.95);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 46px;
+      text-align: center;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.34);
+      padding: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button.dark {
+      background: rgba(24,24,24,0.94);
+    }
+
+    button.active {
+      background: rgba(255,149,0,0.98);
+      color: #111;
+    }
+
+    #info {
+      position: absolute;
+      top: calc(8px + env(safe-area-inset-top));
+      left: 8px;
+      right: 8px;
+      z-index: 9;
+      background: rgba(255,255,255,0.88);
+      color: #111;
+      padding: 5px 8px;
+      border-radius: 9px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.20);
+      font-size: 10.5px;
+      line-height: 1.25;
+      pointer-events: none;
+      box-sizing: border-box;
+    }
+
+    .boat {
+      width: 52px;
+      height: 52px;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    .maplibregl-ctrl-bottom-left,
+    .maplibregl-ctrl-bottom-right {
+      display: none;
+    }
+
+    @media (max-width: 360px) {
+      .controls {
+        gap: 8px;
+      }
+
+      button {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        font-size: 18px;
+        line-height: 42px;
+      }
+
+      #info {
+        font-size: 10px;
+      }
+
+      .boat {
+        width: 48px;
+        height: 48px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<div id="info">GPS 준비 중...</div>
+
+<div class="controls">
+  <button id="locBtn" onclick="goToMe()" aria-label="내 위치" title="내 위치">📍</button>
+  <button id="compassBtn" onclick="enableCompass()" aria-label="나침반" title="나침반">🧭</button>
+  <button id="headingBtn" onclick="toggleHeadingUp()" aria-label="헤딩업" title="헤딩업">⬆️</button>
+  <button id="followBtn" class="dark" onclick="toggleFollow()" aria-label="추적" title="추적">🎯</button>
+</div>
+
+<script>
+/* =========================================================
+   기본 설정
+========================================================= */
+const IMAGE_URL = "gosam-low-water-optimized.jpg";
+
+const IMAGE_COORDINATES = [
+  [127.269358, 37.09483],
+  [127.297100, 37.09483],
+  [127.297100, 37.07270],
+  [127.269358, 37.07270]
+];
+
+const INITIAL_CENTER = [127.283, 37.082];
+const INITIAL_ZOOM = 14.8;
+
+const RING_METERS = [5,10,15,20,25,30,35,40,45,50];
+const HEADING_LINE_METERS = 50;
+
+const MAX_GPS_ACCURACY_DROP = 80;
+const WEAK_GPS_ACCURACY = 25;
+const MIN_MOVE_METERS = 1.1;
+
+const POS_SMOOTH_GOOD = 0.30;
+const POS_SMOOTH_WEAK = 0.13;
+const COMPASS_SMOOTH = 0.22;
+const GPS_HEAD_SMOOTH = 0.18;
+
+/*
+  방향이 반대로 보이면 여기만 -1로 바꾸면 됨.
+  현재는 이전 테스트 기준으로 +1 유지.
+*/
+const MAP_BEARING_SIGN = 1;
+
+/* =========================================================
+   지도 생성
+========================================================= */
+const map = new maplibregl.Map({
+  container: "map",
+  center: INITIAL_CENTER,
+  zoom: INITIAL_ZOOM,
+  bearing: 0,
+  pitch: 0,
+  dragRotate: true,
+  touchZoomRotate: true,
+  attributionControl: false,
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: "raster",
+        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        attribution: "© OpenStreetMap"
+      }
+    },
+    layers: [
+      { id: "osm", type: "raster", source: "osm" }
+    ]
+  }
+});
+
+/* =========================================================
+   상태
+========================================================= */
+const info = document.getElementById("info");
+const compassBtn = document.getElementById("compassBtn");
+const headingBtn = document.getElementById("headingBtn");
+const followBtn = document.getElementById("followBtn");
+
+let headingUp = false;
+let followBoat = false;
+let compassEnabled = false;
+
+let currentLngLat = null;
+let smoothedLngLat = null;
+
+let compassHeading = null;
+let gpsHeading = null;
+let finalHeading = 0;
+
+let boatMarker = null;
+let lastGpsAt = 0;
+let lastBearingApplied = null;
+let isUserInteracting = false;
+
+/* =========================================================
+   지도 로드
+========================================================= */
+map.on("load", () => {
+  map.addSource("low-water", {
+    type: "image",
+    url: IMAGE_URL,
+    coordinates: IMAGE_COORDINATES
+  });
+
+  map.addLayer({
+    id: "low-water-layer",
+    type: "raster",
+    source: "low-water",
+    paint: {
+      "raster-opacity": 0.92,
+      "raster-fade-duration": 0
+    }
+  });
+
+  createRangeRings();
+  createHeadingLine();
+  startGPS();
+  updateButtons();
+});
+
+/*
+  핵심: 사용자가 조작 중이면 헤딩 회전과 추적 이동을 멈춤.
+  그래서 헤딩ON 상태에서도 드래그/확대/축소 가능.
+*/
+["dragstart", "zoomstart", "rotatestart", "pitchstart"].forEach(ev => {
+  map.on(ev, () => {
+    isUserInteracting = true;
+    followBoat = false;
+    updateButtons();
+  });
+});
+
+["dragend", "zoomend", "rotateend", "pitchend"].forEach(ev => {
+  map.on(ev, () => {
+    setTimeout(() => { isUserInteracting = false; }, 450);
+  });
+});
+
+/* =========================================================
+   유틸
+========================================================= */
+function normalizeDeg(d) {
+  d = d % 360;
+  return d < 0 ? d + 360 : d;
+}
+
+function angleDiff(from, to) {
+  return ((to - from + 540) % 360) - 180;
+}
+
+function smoothAngle(prev, next, factor) {
+  if (prev === null || prev === undefined || isNaN(prev)) return normalizeDeg(next);
+  return normalizeDeg(prev + angleDiff(prev, next) * factor);
+}
+
+function smoothPosition(prev, next, factor) {
+  if (!prev) return next;
+  return [
+    prev[0] + (next[0] - prev[0]) * factor,
+    prev[1] + (next[1] - prev[1]) * factor
+  ];
+}
+
+function distanceMeters(a, b) {
+  if (!a || !b) return Infinity;
+  const R = 6371000;
+  const lat1 = a[1] * Math.PI / 180;
+  const lat2 = b[1] * Math.PI / 180;
+  const dLat = (b[1] - a[1]) * Math.PI / 180;
+  const dLng = (b[0] - a[0]) * Math.PI / 180;
+
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function destinationPoint(center, meters, bearingDeg) {
+  const R = 6371000;
+  const brng = bearingDeg * Math.PI / 180;
+  const lat1 = center[1] * Math.PI / 180;
+  const lng1 = center[0] * Math.PI / 180;
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(meters / R) +
+    Math.cos(lat1) * Math.sin(meters / R) * Math.cos(brng)
+  );
+
+  const lng2 = lng1 + Math.atan2(
+    Math.sin(brng) * Math.sin(meters / R) * Math.cos(lat1),
+    Math.cos(meters / R) - Math.sin(lat1) * Math.sin(lat2)
+  );
+
+  return [lng2 * 180 / Math.PI, lat2 * 180 / Math.PI];
+}
+
+function formatSpeed(s) {
+  if (s === null || s === undefined || isNaN(s)) return "-";
+  return (s * 3.6).toFixed(1) + "km/h";
+}
+
+function formatHeading(h) {
+  if (h === null || h === undefined || isNaN(h)) return "-";
+  return Math.round(normalizeDeg(h)) + "°";
+}
+
+function mapBearingForHeading() {
+  return normalizeDeg(finalHeading * MAP_BEARING_SIGN);
+}
+
+function updateButtons() {
+  compassBtn.classList.toggle("active", compassEnabled);
+  headingBtn.classList.toggle("active", headingUp);
+  followBtn.classList.toggle("active", followBoat);
+}
+
+/* =========================================================
+   보트 아이콘
+========================================================= */
+function makeBoatElement() {
+  const el = document.createElement("div");
+  el.className = "boat";
+  el.innerHTML = `
+    <svg width="52" height="52" viewBox="0 0 64 64">
+      <defs>
+        <filter id="boatShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-opacity="0.48"/>
+        </filter>
+      </defs>
+
+      <g filter="url(#boatShadow)">
+        <path
+          d="M32 4
+             C42 16 48 34 42 54
+             C39 60 25 60 22 54
+             C16 34 22 16 32 4 Z"
+          fill="#007aff"
+          stroke="#ffffff"
+          stroke-width="3.5"
+          stroke-linejoin="round"
+        />
+        <path
+          d="M32 9
+             C38 21 41 36 36 51
+             C35 54 29 54 28 51
+             C23 36 26 21 32 9 Z"
+          fill="rgba(255,255,255,0.28)"
+        />
+        <path d="M32 4 L39 20 L32 16 L25 20 Z" fill="#ffffff" opacity="0.95"/>
+        <circle cx="32" cy="39" r="5.5" fill="#ffffff" opacity="0.96"/>
+      </g>
+    </svg>
+  `;
+  return el;
+}
+
+function updateBoat(pos) {
+  if (!boatMarker) {
+    boatMarker = new maplibregl.Marker({
+      element: makeBoatElement(),
+      anchor: "center",
+      rotationAlignment: "viewport"
+    }).setLngLat(pos).addTo(map);
+  } else {
+    boatMarker.setLngLat(pos);
+  }
+
+  const el = boatMarker.getElement();
+
+  // 헤딩ON: 배는 화면 위 고정.
+  // 헤딩OFF: 배가 실제 방향으로 회전.
+  const rotation = headingUp ? 0 : finalHeading;
+  el.style.transform = `translate(-50%, -50%) rotate(${normalizeDeg(rotation)}deg)`;
+}
+
+/* =========================================================
+   거리 링
+========================================================= */
+function circlePolygon(center, radiusMeters, points = 96) {
+  const coords = [];
+  for (let i = 0; i <= points; i++) {
+    coords.push(destinationPoint(center, radiusMeters, 360 * i / points));
+  }
+
+  return {
+    type: "Feature",
+    properties: { radius: radiusMeters },
+    geometry: { type: "Polygon", coordinates: [coords] }
+  };
+}
+
+function labelPoint(center, radiusMeters) {
+  return {
+    type: "Feature",
+    properties: { label: radiusMeters + "m", radius: radiusMeters },
+    geometry: {
+      type: "Point",
+      coordinates: destinationPoint(center, radiusMeters, 90)
+    }
+  };
+}
+
+function createRangeRings() {
+  map.addSource("range-rings", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] }
+  });
+
+  map.addLayer({
+    id: "range-rings-fill",
+    type: "fill",
+    source: "range-rings",
+    paint: {
+      "fill-color": "#007aff",
+      "fill-opacity": 0.010
+    }
+  });
+
+  map.addLayer({
+    id: "range-rings-line",
+    type: "line",
+    source: "range-rings",
+    paint: {
+      "line-color": "#007aff",
+      "line-width": [
+        "case",
+        ["in", ["get", "radius"], ["literal", [20,30,40,50]]],
+        2.0,
+        0.85
+      ],
+      "line-opacity": [
+        "case",
+        ["in", ["get", "radius"], ["literal", [20,30,40,50]]],
+        0.88,
+        0.45
+      ]
+    }
+  });
+
+  map.addSource("range-labels", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] }
+  });
+
+  map.addLayer({
+    id: "range-labels-layer",
+    type: "symbol",
+    source: "range-labels",
+    layout: {
+      "text-field": ["get", "label"],
+      "text-size": 10,
+      "text-anchor": "center",
+      "text-allow-overlap": true,
+      "text-ignore-placement": true
+    },
+    paint: {
+      "text-color": "#005fcc",
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.5
+    }
+  });
+}
+
+function updateRangeRings(center) {
+  if (!map.getSource("range-rings")) return;
+
+  map.getSource("range-rings").setData({
+    type: "FeatureCollection",
+    features: RING_METERS.map(r => circlePolygon(center, r))
+  });
+
+  map.getSource("range-labels").setData({
+    type: "FeatureCollection",
+    features: RING_METERS.map(r => labelPoint(center, r))
+  });
+}
+
+/* =========================================================
+   진행선
+========================================================= */
+function createHeadingLine() {
+  map.addSource("heading-line", {
+    type: "geojson",
+    data: { type: "FeatureCollection", features: [] }
+  });
+
+  map.addLayer({
+    id: "heading-line-layer",
+    type: "line",
+    source: "heading-line",
+    paint: {
+      "line-color": "#ff3b30",
+      "line-width": 2.4,
+      "line-opacity": 0.90,
+      "line-dasharray": [1.4, 1]
+    }
+  });
+
+  map.addLayer({
+    id: "heading-line-label",
+    type: "symbol",
+    source: "heading-line",
+    filter: ["==", ["get", "type"], "label"],
+    layout: {
+      "text-field": ["get", "label"],
+      "text-size": 11,
+      "text-anchor": "bottom",
+      "text-allow-overlap": true,
+      "text-ignore-placement": true
+    },
+    paint: {
+      "text-color": "#ff3b30",
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.6
+    }
+  });
+}
+
+function updateHeadingLine(center) {
+  if (!map.getSource("heading-line")) return;
+
+  const end = destinationPoint(center, HEADING_LINE_METERS, finalHeading);
+
+  map.getSource("heading-line").setData({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: { type: "line" },
+        geometry: { type: "LineString", coordinates: [center, end] }
+      },
+      {
+        type: "Feature",
+        properties: { type: "label", label: "50m" },
+        geometry: { type: "Point", coordinates: end }
+      }
+    ]
+  });
+}
+
+/* =========================================================
+   헤딩 결정
+========================================================= */
+function chooseHeading(speed) {
+  if (compassHeading !== null && !isNaN(compassHeading)) {
+    finalHeading = smoothAngle(finalHeading, compassHeading, COMPASS_SMOOTH);
+    return "나침반";
+  }
+
+  if (gpsHeading !== null && !isNaN(gpsHeading)) {
+    finalHeading = smoothAngle(finalHeading, gpsHeading, GPS_HEAD_SMOOTH);
+    return "GPS";
+  }
+
+  return "대기";
+}
+
+/* =========================================================
+   업데이트
+========================================================= */
+function updateInfo(accuracy, speed, source) {
+  info.innerHTML =
+    `📍${accuracy ? Math.round(accuracy) + "m" : "-"} · 🧭${formatHeading(finalHeading)}(${source}) · 🚤${formatSpeed(speed)}<br>` +
+    `헤딩:<b>${headingUp ? "ON" : "OFF"}</b> · 추적:<b>${followBoat ? "ON" : "OFF"}</b> · ⭕5~50m · 🔴50m`;
+}
+
+function applyHeadingBearingIfNeeded() {
+  if (!headingUp || isUserInteracting) return;
+
+  const target = mapBearingForHeading();
+
+  if (lastBearingApplied !== null) {
+    const diff = Math.abs(angleDiff(lastBearingApplied, target));
+    if (diff < 1.2) return;
+  }
+
+  lastBearingApplied = target;
+
+  // 헤딩ON에서는 center/zoom을 건드리지 않고 bearing만 변경.
+  map.setBearing(target);
+}
+
+function updateAll(pos, accuracy, speed, source) {
+  if (!pos) return;
+
+  updateBoat(pos);
+  updateRangeRings(pos);
+  updateHeadingLine(pos);
+
+  applyHeadingBearingIfNeeded();
+
+  // 추적ON일 때만 중심 이동.
+  if (followBoat && !isUserInteracting) {
+    map.panTo(pos, { duration: 0 });
+  }
+
+  updateInfo(accuracy, speed, source);
+}
+
+/* =========================================================
+   나침반
+========================================================= */
+window.enableCompass = async function() {
+  try {
+    if (
+      typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function"
+    ) {
+      const result = await DeviceOrientationEvent.requestPermission();
+      if (result !== "granted") {
+        alert("나침반 권한이 거부되었습니다.");
+        return;
+      }
+    }
+
+    window.addEventListener("deviceorientationabsolute", onOrientation, true);
+    window.addEventListener("deviceorientation", onOrientation, true);
+
+    compassEnabled = true;
+    updateButtons();
+  } catch (e) {
+    alert("나침반 권한 요청 실패: " + e.message);
+  }
+};
+
+function onOrientation(e) {
+  let h = null;
+
+  if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
+    h = e.webkitCompassHeading;
+  } else if (e.alpha !== null && e.alpha !== undefined) {
+    h = 360 - e.alpha;
+  }
+
+  if (h === null || isNaN(h)) return;
+
+  compassHeading = smoothAngle(compassHeading, normalizeDeg(h), COMPASS_SMOOTH);
+  const source = chooseHeading(0);
+
+  if (smoothedLngLat) {
+    updateAll(smoothedLngLat, null, 0, source);
+  } else {
+    updateInfo(null, 0, source);
+  }
+}
+
+/* =========================================================
+   GPS
+========================================================= */
+function startGPS() {
+  if (!navigator.geolocation) {
+    info.innerHTML = "GPS를 지원하지 않는 브라우저입니다.";
+    return;
+  }
+
+  navigator.geolocation.watchPosition(
+    pos => {
+      const now = Date.now();
+      if (now - lastGpsAt < 700) return;
+      lastGpsAt = now;
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+      const speed = pos.coords.speed;
+      const heading = pos.coords.heading;
+
+      if (accuracy && accuracy > MAX_GPS_ACCURACY_DROP) {
+        updateInfo(accuracy, speed, "정확도낮음");
+        return;
+      }
+
+      const raw = [lng, lat];
+      currentLngLat = raw;
+
+      if (heading !== null && heading !== undefined && !isNaN(heading)) {
+        gpsHeading = normalizeDeg(heading);
+      }
+
+      if (smoothedLngLat && distanceMeters(smoothedLngLat, raw) < MIN_MOVE_METERS) {
+        const source = chooseHeading(speed);
+        updateAll(smoothedLngLat, accuracy, speed, source);
+        return;
+      }
+
+      const factor = accuracy && accuracy > WEAK_GPS_ACCURACY
+        ? POS_SMOOTH_WEAK
+        : POS_SMOOTH_GOOD;
+
+      smoothedLngLat = smoothPosition(smoothedLngLat, raw, factor);
+
+      const source = chooseHeading(speed);
+      updateAll(smoothedLngLat, accuracy, speed, source);
+    },
+    err => {
+      info.innerHTML = "GPS 오류. HTTPS 주소와 Safari 위치 권한을 확인하세요.";
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 15000
+    }
+  );
+}
+
+/* =========================================================
+   버튼
+========================================================= */
+window.goToMe = function() {
+  if (!navigator.geolocation) {
+    alert("위치 서비스를 지원하지 않습니다.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const now = [pos.coords.longitude, pos.coords.latitude];
+
+      currentLngLat = now;
+      smoothedLngLat = now;
+      followBoat = true;
+
+      if (pos.coords.heading !== null && pos.coords.heading !== undefined && !isNaN(pos.coords.heading)) {
+        gpsHeading = normalizeDeg(pos.coords.heading);
+      }
+
+      const source = chooseHeading(pos.coords.speed);
+
+      map.flyTo({
+        center: now,
+        zoom: Math.max(map.getZoom(), 17),
+        bearing: headingUp ? mapBearingForHeading() : map.getBearing(),
+        speed: 1.4,
+        essential: true
+      });
+
+      updateAll(now, pos.coords.accuracy, pos.coords.speed, source);
+      updateButtons();
+    },
+    () => alert("현재 위치를 가져오지 못했습니다. 위치 권한을 확인하세요."),
+    {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 0
+    }
+  );
+};
+
+window.toggleHeadingUp = function() {
+  headingUp = !headingUp;
+
+  if (!headingUp) {
+    lastBearingApplied = 0;
+    map.easeTo({
+      bearing: 0,
+      duration: 160
+    });
+  } else {
+    if (!compassEnabled) {
+      alert("제자리 회전까지 정확히 보려면 먼저 ‘나침반’을 누르세요.");
+    }
+    applyHeadingBearingIfNeeded();
+  }
+
+  if (smoothedLngLat) updateAll(smoothedLngLat, null, 0, chooseHeading(0));
+  updateButtons();
+};
+
+window.toggleFollow = function() {
+  followBoat = !followBoat;
+
+  if (followBoat && smoothedLngLat) {
+    map.easeTo({
+      center: smoothedLngLat,
+      zoom: Math.max(map.getZoom(), 17),
+      duration: 180
+    });
+  }
+
+  updateButtons();
+};
+</script>
+</body>
+</html>
