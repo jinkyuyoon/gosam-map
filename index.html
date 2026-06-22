@@ -679,7 +679,7 @@ function addPinHere() {
   lat: currentLatLng.lat,
   lng: currentLatLng.lng,
   name: "Point " + (pins.length + 1),
-  name: "Point " + Date.now()
+  createdAt: Date.now()
 });
 
   localStorage.setItem(
