@@ -1,98 +1,338 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>고삼저수지 갈수기 GPS</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { margin:0; padding:0; }
-        #map { height: 100vh; width: 100%; }
-        #info {
-            position: absolute; top: 60px; left: 15px;
-            background: rgba(255,255,255,0.95);
-            padding: 12px 16px; 
-            border-radius: 10px;
-            z-index: 1000; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-        button {
-            position: absolute;
-            top: 60px;
-            right: 15px;
-            z-index: 1000;
-            padding: 12px 16px;
-            background: #007aff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>고삼저수지 갈수기 GPS</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #111;
+    }
+
+    #map { height: 100vh; width: 100%; }
+
+    #info {
+      position: absolute;
+      top: calc(60px + env(safe-area-inset-top));
+      left: 15px;
+      right: 15px;
+      background: rgba(255,255,255,0.95);
+      padding: 11px 14px;
+      border-radius: 12px;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      font-size: 14px;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+
+    .controls {
+      position: absolute;
+      top: calc(12px + env(safe-area-inset-top));
+      left: 12px;
+      right: 12px;
+      z-index: 1001;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 11px 13px;
+      background: rgba(0,122,255,0.95);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+    }
+
+    button.secondary { background: rgba(30,30,30,0.92); }
+
+    button.active {
+      background: rgba(255,149,0,0.96);
+      color: #111;
+    }
+
+    .boat-icon {
+      width: 42px;
+      height: 42px;
+      position: relative;
+      transform-origin: 50% 50%;
+    }
+
+    .boat-arrow {
+      position: absolute;
+      left: 9px;
+      top: 1px;
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-bottom: 28px solid #007aff;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.45));
+      transform-origin: 50% 72%;
+    }
+
+    .boat-dot {
+      position: absolute;
+      left: 12px;
+      top: 20px;
+      width: 18px;
+      height: 18px;
+      background: #007aff;
+      border-radius: 50%;
+      border: 4px solid white;
+      box-sizing: border-box;
+      box-shadow: 0 0 0 5px rgba(0,122,255,0.22);
+    }
+
+    .leaflet-control-attribution { display: none; }
+  </style>
 </head>
+
 <body>
-    <div id="map"></div>
-    <div id="info">GPS 불러오는 중...</div>
-    <button onclick="goToMyLocation()">📍 내 위치로</button>
+  <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const map = L.map('map').setView([37.082, 127.283], 15);
+  <div class="controls">
+    <button onclick="goToMyLocation()">📍 내 위치</button>
+    <button id="headingBtn" onclick="toggleHeadingUp()">🧭 헤딩업 OFF</button>
+    <button class="secondary" onclick="resetNorth()">북쪽고정</button>
+  </div>
 
-        // 구글 위성지도
-        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-            attribution: '&copy; Google Maps',
-            maxZoom: 20
+  <div id="info">GPS 불러오는 중...</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
+
+  <script>
+    const INITIAL_CENTER = [37.082, 127.283];
+    const INITIAL_ZOOM = 15;
+
+    const imageUrl = "gosam-low-water.jpg";
+
+    const bounds = [
+      [37.09483, 127.269358],
+      [37.0727, 127.2971]
+    ];
+
+    const MIN_SPEED_FOR_HEADING = 0.7;
+    const SMOOTHING = 0.22;
+
+    const map = L.map("map", {
+      rotate: true,
+      touchRotate: true,
+      bearing: 0,
+      zoomControl: true
+    }).setView(INITIAL_CENTER, INITIAL_ZOOM);
+
+    L.tileLayer("https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", {
+      attribution: "&copy; Google Maps",
+      maxZoom: 21
+    }).addTo(map);
+
+    L.imageOverlay(imageUrl, bounds, { opacity: 0.92 }).addTo(map);
+
+    let boatMarker = null;
+    let accuracyCircle = null;
+    let currentPosition = null;
+
+    let headingUp = false;
+    let lastHeading = null;
+    let lastMarkerHeading = 0;
+
+    const info = document.getElementById("info");
+    const headingBtn = document.getElementById("headingBtn");
+
+    function normalizeDeg(deg) {
+      deg = deg % 360;
+      return deg < 0 ? deg + 360 : deg;
+    }
+
+    function angleDiff(from, to) {
+      return ((to - from + 540) % 360) - 180;
+    }
+
+    function smoothHeading(prev, next, factor) {
+      if (prev === null || prev === undefined || isNaN(prev)) return normalizeDeg(next);
+      const diff = angleDiff(prev, next);
+      return normalizeDeg(prev + diff * factor);
+    }
+
+    function formatSpeed(speed) {
+      if (speed === null || speed === undefined || isNaN(speed)) return "-";
+      return (speed * 3.6).toFixed(1) + "km/h";
+    }
+
+    function formatHeading(h) {
+      if (h === null || h === undefined || isNaN(h)) return "-";
+      return Math.round(normalizeDeg(h)) + "°";
+    }
+
+    function setInfo({accuracy, speed, heading, source}) {
+      info.innerHTML =
+        `📍 정확도: <b>${Math.round(accuracy || 0)}m</b><br>` +
+        `🚤 속도: <b>${formatSpeed(speed)}</b><br>` +
+        `🧭 방향: <b>${formatHeading(heading)}</b> ${source ? "(" + source + ")" : ""}<br>` +
+        `모드: <b>${headingUp ? "헤딩업" : "북쪽고정"}</b>`;
+    }
+
+    function createBoatIcon(heading) {
+      return L.divIcon({
+        className: "",
+        html: `
+          <div class="boat-icon" style="transform: rotate(${heading}deg);">
+            <div class="boat-arrow"></div>
+            <div class="boat-dot"></div>
+          </div>
+        `,
+        iconSize: [42, 42],
+        iconAnchor: [21, 21]
+      });
+    }
+
+    function updateBoatMarker(lat, lng, heading) {
+      const markerHeading = normalizeDeg(heading || lastMarkerHeading || 0);
+      lastMarkerHeading = markerHeading;
+
+      if (!boatMarker) {
+        boatMarker = L.marker([lat, lng], {
+          icon: createBoatIcon(markerHeading)
+        }).addTo(map).bindPopup("현재 위치");
+      } else {
+        boatMarker.setLatLng([lat, lng]);
+        boatMarker.setIcon(createBoatIcon(markerHeading));
+      }
+    }
+
+    function updateAccuracyCircle(lat, lng, accuracy) {
+      if (!accuracyCircle) {
+        accuracyCircle = L.circle([lat, lng], {
+          radius: accuracy || 10,
+          stroke: false,
+          fillOpacity: 0.14
         }).addTo(map);
+      } else {
+        accuracyCircle.setLatLng([lat, lng]);
+        accuracyCircle.setRadius(accuracy || 10);
+      }
+    }
 
-        const imageUrl = 'gosam-low-water.jpg';
-        const bounds = [[37.09483, 127.269358], [37.0727, 127.2971]];
-        L.imageOverlay(imageUrl, bounds, {opacity: 0.92}).addTo(map);
+    function applyMapHeading(heading) {
+      if (!headingUp) return;
+      if (heading === null || heading === undefined || isNaN(heading)) return;
 
-        let boatMarker = null;
-        let currentPosition = null;
+      if (typeof map.setBearing === "function") {
+        map.setBearing(-normalizeDeg(heading));
+      }
+    }
 
-        function startGPS() {
-            const info = document.getElementById('info');
-            
-            navigator.geolocation.watchPosition(
-                function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = Math.round(position.coords.accuracy);
-                    const heading = position.coords.heading;
+    function startGPS() {
+      if (!("geolocation" in navigator)) {
+        info.innerHTML = "이 브라우저는 GPS를 지원하지 않습니다.";
+        return;
+      }
 
-                    currentPosition = [lat, lng];
+      navigator.geolocation.watchPosition(
+        function(position) {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+          const speed = position.coords.speed;
+          const heading = position.coords.heading;
 
-                    info.innerHTML = `📍 정확도: ${accuracy}m`;
+          currentPosition = [lat, lng];
 
-                    if (!boatMarker) {
-                        boatMarker = L.marker([lat, lng]).addTo(map).bindPopup('현재 위치');
-                    } else {
-                        boatMarker.setLatLng([lat, lng]);
-                    }
+          let headingSource = "대기";
 
-                    // === Heading Up ===
-                    if (heading !== null && heading !== undefined) {
-                        map.setBearing(heading);
-                    }
-                },
-                function(error) {
-                    info.innerHTML = 'GPS 오류: 위치 권한을 허용해주세요.<br><button onclick="startGPS()">다시 시도</button>';
-                },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-            );
+          if (
+            heading !== null &&
+            heading !== undefined &&
+            !isNaN(heading) &&
+            speed !== null &&
+            speed !== undefined &&
+            !isNaN(speed) &&
+            speed >= MIN_SPEED_FOR_HEADING
+          ) {
+            headingSource = "GPS";
+            lastHeading = smoothHeading(lastHeading, heading, SMOOTHING);
+          }
+
+          const visibleHeading = lastHeading ?? 0;
+
+          updateBoatMarker(lat, lng, visibleHeading);
+          updateAccuracyCircle(lat, lng, accuracy);
+          applyMapHeading(lastHeading);
+
+          setInfo({ accuracy, speed, heading: lastHeading, source: headingSource });
+
+          if (headingUp) {
+            map.panTo([lat, lng], { animate: true });
+          }
+        },
+        function(error) {
+          let msg = "GPS 오류";
+          if (error.code === 1) msg = "위치 권한이 거부되었습니다.";
+          if (error.code === 2) msg = "현재 위치를 가져올 수 없습니다.";
+          if (error.code === 3) msg = "GPS 요청 시간이 초과되었습니다.";
+
+          info.innerHTML =
+            `${msg}<br>` +
+            `<button onclick="startGPS()" style="position:static;margin-top:8px;">다시 시도</button>`;
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 500,
+          timeout: 12000
+        }
+      );
+    }
+
+    window.goToMyLocation = function() {
+      if (currentPosition) {
+        map.setView(currentPosition, Math.max(map.getZoom(), 17), { animate: true });
+      } else {
+        alert("아직 GPS 위치를 받지 못했습니다.");
+      }
+    };
+
+    window.toggleHeadingUp = function() {
+      headingUp = !headingUp;
+
+      if (headingUp) {
+        headingBtn.classList.add("active");
+        headingBtn.innerText = "🧭 헤딩업 ON";
+
+        if (currentPosition) {
+          map.setView(currentPosition, Math.max(map.getZoom(), 17), { animate: true });
         }
 
-        window.goToMyLocation = function() {
-            if (currentPosition) {
-                map.setView(currentPosition, map.getZoom(), {animate: true});
-            } else {
-                alert("아직 GPS 위치를 받지 못했습니다.");
-            }
-        };
+        if (lastHeading !== null) applyMapHeading(lastHeading);
+      } else {
+        headingBtn.classList.remove("active");
+        headingBtn.innerText = "🧭 헤딩업 OFF";
+        if (typeof map.setBearing === "function") map.setBearing(0);
+      }
+    };
 
-        window.onload = startGPS;
-    </script>
+    window.resetNorth = function() {
+      headingUp = false;
+      headingBtn.classList.remove("active");
+      headingBtn.innerText = "🧭 헤딩업 OFF";
+      if (typeof map.setBearing === "function") map.setBearing(0);
+    };
+
+    window.onload = startGPS;
+  </script>
 </body>
 </html>
