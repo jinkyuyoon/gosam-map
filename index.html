@@ -59,7 +59,20 @@
       gap: 8px;
       pointer-events: none;
     }
-
+    
+    .gps-status {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(20,20,20,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.34);
+      pointer-events: none;
+    }
+    
     button {
       pointer-events: auto;
       width: 46px;
@@ -124,9 +137,10 @@
 <body>
 <div id="map"></div>
 
-<div id="info">GPS 준비 중...</div>
-
 <div class="controls">
+  <div id="gpsStatus" class="gps-status">
+  📡❌
+</div>
   <button id="locBtn" onclick="goToMe()" aria-label="내 위치" title="내 위치">📍</button>
   <button id="compassBtn" onclick="enableCompass()" aria-label="나침반" title="나침반">🧭</button>
   <button id="headingBtn" class="dark" onclick="toggleHeadingUp()" aria-label="헤딩업" title="헤딩업">⬆️</button>
@@ -197,7 +211,7 @@ L.imageOverlay(IMAGE_URL, IMAGE_BOUNDS, {
 /* =========================================================
    상태
 ========================================================= */
-const info = document.getElementById("info");
+const gpsStatus = document.getElementById("gpsStatus");
 const compassBtn = document.getElementById("compassBtn");
 const headingBtn = document.getElementById("headingBtn");
 const followBtn = document.getElementById("followBtn");
@@ -556,11 +570,6 @@ function chooseHeading(speed) {
 /* =========================================================
    전체 업데이트
 ========================================================= */
-function updateInfo(accuracy, speed, source) {
-  info.innerHTML =
-    `📍${accuracy ? Math.round(accuracy) + "m" : "-"} · 🧭${formatHeading(finalHeading)}(${source}) · 🚤${formatSpeed(speed)}<br>` +
-    `헤딩:<b>${headingUp ? "ON" : "OFF"}</b> · 추적:<b>${followBoat ? "ON" : "OFF"}</b> · ⭕5/10/20/30/40/50m · 🟡50m`;
-}
 
 function updateAll(pos, accuracy, speed, source) {
   if (!pos) return;
@@ -580,9 +589,6 @@ function updateAll(pos, accuracy, speed, source) {
       }, 300);
     }
   }
-
-  updateInfo(accuracy, speed, source);
-}
 
 /* =========================================================
    나침반
@@ -628,9 +634,7 @@ function onOrientation(e) {
   // 보트 아이콘 회전과 지도 헤딩만 즉시 갱신한다.
   updateBoatRotationOnly();
   applyHeadingBearingIfNeeded();
-  updateInfo(null, 0, source);
-}
-
+ 
 /* =========================================================
    GPS
 ========================================================= */
@@ -642,6 +646,8 @@ function startGPS() {
 
   navigator.geolocation.watchPosition(
     pos => {
+      gpsStatus.innerHTML = "📡";
+      gpsStatus.style.color = "#00ff00";
       const now = Date.now();
       if (now - lastGpsAt < 700) return;
       lastGpsAt = now;
@@ -679,9 +685,12 @@ function startGPS() {
       const source = chooseHeading(speed);
       updateAll(smoothedLatLng, accuracy, speed, source);
     },
-    err => {
-      info.innerHTML = "GPS 오류. HTTPS 주소와 Safari 위치 권한을 확인하세요.";
-    },
+   err => {
+
+      gpsStatus.innerHTML = "📡❌";
+      gpsStatus.style.color = "#ff3b30";
+
+    }
     {
       enableHighAccuracy: true,
       maximumAge: 0,
