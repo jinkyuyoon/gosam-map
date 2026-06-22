@@ -218,7 +218,8 @@ let lastGpsAt = 0;
 let lastCenterUpdateAt = 0;
 let lastBearingUpdateAt = 0;
 let lastBearingApplied = 0;
-
+let lastSpeedLatLng = null;
+let lastSpeedTime = null;
 let userInteractingUntil = 0;
 
 /* =========================================================
@@ -577,8 +578,27 @@ function startGPS() {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const accuracy = pos.coords.accuracy;
-      const speed = pos.coords.speed;
       const heading = pos.coords.heading;
+
+      const raw = L.latLng(lat, lng);
+      currentLatLng = raw;
+
+      // iPhone에서 speed가 0 또는 null일 때 직접 계산
+      let speed = pos.coords.speed;
+
+      if ((speed === null || speed === undefined || speed <= 0) &&
+          lastSpeedLatLng && lastSpeedTime) {
+
+          const dist = lastSpeedLatLng.distanceTo(raw);
+          const dt = (Date.now() - lastSpeedTime) / 1000;
+
+          if (dt > 0) {
+            speed = dist / dt;
+          }
+        }
+
+        lastSpeedLatLng = raw;
+        lastSpeedTime = Date.now();
 
       if (accuracy && accuracy > MAX_GPS_ACCURACY_DROP) {
         updateInfo(accuracy, speed, "정확도낮음");
