@@ -436,7 +436,12 @@ function createHeadingLine() {
 
 function updateHeadingLine(center) {
     const bearing = headingUp ? 0 : finalHeading;
-    const end = destinationPoint(center, HEADING_LINE_METERS, bearing);
+
+    const end = destinationPoint(
+        center,
+        HEADING_LINE_METERS,
+        bearing
+    );
 
     headingLine.setLatLngs([center, end]);
     headingLabel.setLatLng(end);
@@ -446,7 +451,7 @@ function updateHeadingLine(center) {
    헤딩 / 회전
 ========================================================= */
 function mapBearingForHeading() {
-  return normalizeDeg(finalHeading * HEADING_BEARING_SIGN);
+  return normalizeDeg(finalHeading);
 }
 
 function applyHeadingBearingIfNeeded() {
