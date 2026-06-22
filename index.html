@@ -208,6 +208,7 @@ let compassEnabled = false;
 
 let currentLatLng = null;
 let smoothedLatLng = null;
+let pinMode = false;
 
 let compassHeading = null;
 let gpsHeading = null;
@@ -245,6 +246,33 @@ function programmatic(fn, duration = 300) {
   setTimeout(() => { map._programmaticMove = false; }, duration);
 }
 
+map.on("click", function(e) {
+
+  if (!pinMode) return;
+
+  pinMode = false;
+
+  if (!confirm("여기에 핀을 추가하시겠습니까?")) {
+    return;
+  }
+
+  const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
+
+  pins.push({
+    lat: e.latlng.lat,
+    lng: e.latlng.lng,
+    name: "Point " + (pins.length + 1),
+    createdAt: Date.now()
+  });
+
+  localStorage.setItem(
+    "gosamPins",
+    JSON.stringify(pins)
+  );
+
+  loadPins();
+
+});
 /* =========================================================
    유틸
 ========================================================= */
@@ -664,30 +692,10 @@ function startGPS() {
 
 function addPinHere() {
 
-  if (!currentLatLng) {
-    alert("현재 위치를 아직 받지 못했습니다.");
-    return;
-  }
+  pinMode = true;
 
-  if (!confirm("현재 위치에 핀을 추가하시겠습니까?")) {
-    return;
-  }
+  alert("지도에서 원하는 위치를 터치하세요.");
 
-  const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
-
-  pins.push({
-  lat: currentLatLng.lat,
-  lng: currentLatLng.lng,
-  name: "Point " + (pins.length + 1),
-  createdAt: Date.now()
-});
-
-  localStorage.setItem(
-    "gosamPins",
-    JSON.stringify(pins)
-  );
-
-  loadPins();
 }
 
 function loadPins() {
@@ -799,6 +807,7 @@ window.toggleFollow = function() {
 /* =========================================================
    시작
 ========================================================= */
+
 createRangeRings();
 createHeadingLine();
 
