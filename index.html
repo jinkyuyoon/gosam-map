@@ -657,32 +657,7 @@ function startGPS() {
     info.innerHTML = "GPS를 지원하지 않는 브라우저입니다.";
     return;
   }
-  navigator.geolocation.getCurrentPosition(
-  pos => {
-
-    const now = L.latLng(
-      pos.coords.latitude,
-      pos.coords.longitude
-    );
-
-    currentLatLng = now;
-    smoothedLatLng = now;
-
-    updateAll(
-      now,
-      pos.coords.accuracy,
-      pos.coords.speed,
-      "초기위치"
-    );
-
-  },
-  () => {},
-  {
-    enableHighAccuracy: false,
-    maximumAge: 60000,
-    timeout: 3000
-  }
-);
+  
   navigator.geolocation.watchPosition(
     pos => {
       const now = Date.now();
