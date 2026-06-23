@@ -843,6 +843,15 @@ const ringLabels = {};
   
 function createRangeRings() {
   RING_METERS.forEach(r => {
+    L.circle(INITIAL_CENTER, {
+      radius: r,
+      color: "#40F7FF",
+      weight: 6,
+      opacity: 0.10,
+      fillOpacity: 0,
+      interactive: false
+    }).addTo(ringLayer);
+    
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
