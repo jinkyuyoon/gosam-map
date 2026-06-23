@@ -92,12 +92,19 @@
     }
 
     .ring-label {
-      color: #006400;
+      color: #7CFC00;
+      font-size: 11px;
       font-weight: 800;
-      background: rgba(255,255,255,0.75);
-      padding: 1px 4px;
-      border-radius: 8px;
-      text-shadow: none;
+
+      background: transparent;
+      border: none;
+      box-shadow: none;
+
+      text-shadow:
+        0 0 4px #000,
+        0 0 8px rgba(124,252,0,0.9);
+
+      white-space: nowrap;
     }
       
     .heading-label {
@@ -415,13 +422,24 @@ function createRangeRings() {
   RING_METERS.forEach(r => {
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
-      color: "#7CFC00",
-      fillColor: "#7CFC00",
-      weight: [20,30,40,50].includes(r) ? 3 : 1.5,
-      opacity: [20,30,40,50].includes(r) ? 1.0 : 0.65,
-      fillOpacity: 0.04,
+      color:
+        r >= 50 ? "#FF3B30" :
+        r >= 30 ? "#FFD400" :
+        "#7CFC00",
+
+      weight:
+        r === 50 ? 3 :
+        r >= 30 ? 2 :
+        1,
+
+      opacity: 0.8,
+      fillOpacity: 0,
+
+      dashArray:
+        r >= 30 ? "8,8" : null,
+
       interactive: false
-    }).addTo(ringLayer);
+    });
 
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
