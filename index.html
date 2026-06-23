@@ -906,11 +906,11 @@ function updateHeadingLine(center) {}
 
 function createHeadingCone() {
   headingCone = L.polygon([], {
-    color: "rgba(255,255,255,.28)",
-    weight: 1,
-    opacity: 0.50,
+    color: "transparent",
+    weight: 0,
+    opacity: 0,
     fillColor: "#FFB347",
-    fillOpacity: 0.10,
+    fillOpacity: 0.05,
     interactive: false
   }).addTo(map);
 }
@@ -918,13 +918,17 @@ function createHeadingCone() {
 function updateHeadingCone(center) {
   if (!headingCone) return;
 
-  const left = destinationPoint(center, 52, finalHeading - 18);
-  const tip = destinationPoint(center, 66, finalHeading);
-  const right = destinationPoint(center, 52, finalHeading + 18);
+  const points = [center];
 
-  headingCone.setLatLngs([[center, left, tip, right]]);
+  for (let a = finalHeading - 24; a <= finalHeading + 24; a += 2) {
+    points.push(
+      destinationPoint(center, 60, a)
+    );
+  }
+
+  headingCone.setLatLngs([points]);
 }
-
+  
 function createTrailLine() {
   trailLine = L.polyline([], {
     color: "rgba(255,255,255,.44)",
