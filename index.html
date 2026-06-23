@@ -704,9 +704,18 @@ function startGPS() {
       const source = chooseHeading(speed);
       updateAll(smoothedLatLng, accuracy, speed, source);
     },
-    err => {
-      info.innerHTML = "GPS 오류. HTTPS 주소와 Safari 위치 권한을 확인하세요.";
-    },
+      err => {
+        alert(
+          "GPS 오류\n\n코드: " +
+          err.code +
+          "\n메시지: " +
+          err.message
+        );
+
+        info.innerHTML =
+          "GPS 오류 " +
+          err.code;
+      },
     {
       enableHighAccuracy: true,
       maximumAge: 30000,
