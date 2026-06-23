@@ -216,7 +216,18 @@ function markUserInteracting() {
 
 ["dragstart", "zoomstart", "movestart"].forEach(ev => {
   map.on(ev, () => {
-    if (!map._programmaticMove) { markUserInteracting(); followBoat = false; updateButtons(); }
+    if (!map._programmaticMove) {
+      markUserInteracting();
+
+      followBoat = false;
+      headingUp = false;
+
+      if (typeof map.setBearing === "function") {
+        map.setBearing(0);
+      }
+
+      updateButtons();
+    }
   });
 });
 
@@ -761,7 +772,9 @@ window.goToMe = function() {
 
 window.toggleHeadingUp = function() {
   headingUp = !headingUp;
-
+  if (headingUp) {
+  followBoat = true;
+    }
   if (!headingUp) {
     if (typeof map.setBearing === "function") {
       map.setBearing(0);
