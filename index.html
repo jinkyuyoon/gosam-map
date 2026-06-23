@@ -815,12 +815,14 @@ window.toggleHeadingUp = function() {
       map.setBearing(0);
       lastBearingApplied = 0;
     }
-  } else {
-    if (!compassEnabled) {
-      alert("제자리 회전까지 정확히 보려면 먼저 ‘나침반’을 누르세요.");
+     } else {
+
+      if (!compassEnabled) {
+        enableCompass();
+      }
+
+      applyHeadingBearingIfNeeded();
     }
-    applyHeadingBearingIfNeeded();
-  }
 
   updateBoatRotationOnly();
   if (smoothedLatLng) updateAll(smoothedLatLng, null, 0, chooseHeading(0));
