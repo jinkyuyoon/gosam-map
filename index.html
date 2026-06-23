@@ -832,7 +832,7 @@ let headingLine = null;
 let headingLabel = null;
 let accuracyCircle = null;
 let accuracyLabel = null;
-let headingCone = null;
+let headingCone = [];
 let trailLine = null;
 let trailPoints = [];
 
@@ -905,28 +905,41 @@ function updateHeadingLine(center) {}
 
 
 function createHeadingCone() {
-  headingCone = L.polygon([], {
-    color: "transparent",
-    weight: 0,
-    opacity: 0,
-    fillColor: "#FFB347",
-    fillOpacity: 0.05,
-    interactive: false
-  }).addTo(map);
+  headingCone = [];
+
+  const opacities = [0.12, 0.10, 0.08, 0.06, 0.04];
+
+  opacities.forEach(opacity => {
+    const cone = L.polygon([], {
+      color: "transparent",
+      weight: 0,
+      fillColor: "#FFB347",
+      fillOpacity: opacity,
+      interactive: false
+    }).addTo(map);
+
+    headingCone.push(cone);
+  });
 }
 
 function updateHeadingCone(center) {
-  if (!headingCone) return;
+  if (!headingCone || !headingCone.length) return;
 
-  const points = [center];
+  const ranges = [15, 25, 35, 50, 65];
+  const spread = 24;
 
-  for (let a = finalHeading - 24; a <= finalHeading + 24; a += 2) {
-    points.push(
-      destinationPoint(center, 60, a)
-    );
-  }
+  ranges.forEach((dist, idx) => {
 
-  headingCone.setLatLngs([points]);
+    const pts = [center];
+
+    for (let a = finalHeading - spread; a <= finalHeading + spread; a += 2) {
+      pts.push(
+        destinationPoint(center, dist, a)
+      );
+    }
+
+    headingCone[idx].setLatLngs([pts]);
+  });
 }
   
 function createTrailLine() {
