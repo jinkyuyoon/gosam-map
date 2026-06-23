@@ -1355,6 +1355,43 @@ window.toggleStopwatch=function(){
  }
 };
 
+  let stopwatchPressTimer = null;
+
+const stopwatchCard = document.getElementById("stopwatchCard");
+
+if (stopwatchCard) {
+
+  stopwatchCard.addEventListener("touchstart", () => {
+
+    stopwatchPressTimer = setTimeout(() => {
+
+      stopwatchRunning = false;
+
+      clearInterval(stopwatchTimer);
+      stopwatchTimer = null;
+
+      stopwatchSeconds = 0;
+      alerted10min = false;
+      anchorPoint = null;
+
+      updateStopwatchUI();
+
+      alert("타이머가 초기화되었습니다.");
+
+    }, 1200);
+
+  });
+
+  stopwatchCard.addEventListener("touchend", () => {
+    clearTimeout(stopwatchPressTimer);
+  });
+
+  stopwatchCard.addEventListener("touchcancel", () => {
+    clearTimeout(stopwatchPressTimer);
+  });
+
+}
+
 function checkStopwatchPosition(pos){
  if(!stopwatchRunning||!anchorPoint||!pos) return;
 
