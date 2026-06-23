@@ -1469,6 +1469,9 @@ function updateNearestPinDistance(pos){
 let measureMode=false;
 let measurePoints=[];
 let measureLine=null;
+let measureStartMarker=null;
+let measureEndMarker=null;
+let measureLabel=null;
 
 window.toggleMeasureMode=function(){
  measureMode=!measureMode;
@@ -1477,11 +1480,21 @@ window.toggleMeasureMode=function(){
  if(btn) btn.classList.toggle('active',measureMode);
 
  if(!measureMode){
-   measurePoints=[];
-   if(measureLine) map.removeLayer(measureLine);
-   measureLine=null;
-   document.getElementById('measureDisplay').textContent='--';
- }
+
+  measurePoints=[];
+
+  if(measureLine) map.removeLayer(measureLine);
+  if(measureStartMarker) map.removeLayer(measureStartMarker);
+  if(measureEndMarker) map.removeLayer(measureEndMarker);
+  if(measureLabel) map.removeLayer(measureLabel);
+
+  measureLine=null;
+  measureStartMarker=null;
+  measureEndMarker=null;
+  measureLabel=null;
+
+  document.getElementById('measureDisplay').textContent='--';
+}
 };
 
 map.on('click',function(e){
@@ -1495,25 +1508,91 @@ map.on('click',function(e){
    return;
  }
 
- if(measurePoints.length===2){
+if(measurePoints.length===2){
+
+   const start=measurePoints[0];
+   const end=measurePoints[1];
 
    const dist=Math.round(
-      measurePoints[0].distanceTo(measurePoints[1])
+      start.distanceTo(end)
    );
 
-   document.getElementById('measureDisplay').textContent=dist+'m';
+   document.getElementById('measureDisplay').textContent=
+      dist+'m';
 
    if(measureLine) map.removeLayer(measureLine);
+   if(measureStartMarker) map.removeLayer(measureStartMarker);
+   if(measureEndMarker) map.removeLayer(measureEndMarker);
+   if(measureLabel) map.removeLayer(measureLabel);
 
-   measureLine=L.polyline(measurePoints,{
+   measureLine=L.polyline([start,end],{
       color:'#40F7FF',
       weight:2,
       opacity:.9,
       dashArray:'6,6'
    }).addTo(map);
 
+   measureStartMarker=L.marker(start,{
+      icon:L.divIcon({
+         className:'',
+         html:`
+           <div style="
+             width:14px;
+             height:14px;
+             border-radius:50%;
+             background:#40F7FF;
+             box-shadow:0 0 14px #40F7FF;
+             border:2px solid white;">
+           </div>
+         `,
+         iconSize:[18,18],
+         iconAnchor:[9,9]
+      })
+   }).addTo(map);
+
+   measureEndMarker=L.marker(end,{
+      icon:L.divIcon({
+         className:'',
+         html:`
+           <div style="
+             color:#40F7FF;
+             font-size:22px;
+             font-weight:900;
+             text-shadow:0 0 12px #40F7FF;">
+             ✚
+           </div>
+         `,
+         iconSize:[22,22],
+         iconAnchor:[11,11]
+      })
+   }).addTo(map);
+
+   const center=L.latLng(
+      (start.lat+end.lat)/2,
+      (start.lng+end.lng)/2
+   );
+
+   measureLabel=L.marker(center,{
+      icon:L.divIcon({
+         className:'',
+         html:`
+           <div style="
+             color:#40F7FF;
+             font-size:13px;
+             font-weight:800;
+             text-shadow:
+               0 0 10px #40F7FF,
+               0 1px 4px rgba(0,0,0,.8);">
+             ${dist}m
+           </div>
+         `,
+         iconSize:[60,20],
+         iconAnchor:[30,10]
+      })
+   }).addTo(map);
+
    measurePoints=[];
- }
+}
 });
 
 /* =========================================================
