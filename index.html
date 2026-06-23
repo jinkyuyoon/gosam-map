@@ -716,10 +716,20 @@ function calculateSpeed(latlng) {
   const sec = (now - lastSpeedCalcTime) / 1000;
 
   if (sec > 0.8) {
-    calculatedSpeedKmh = (dist / sec) * 3.6;
-    lastSpeedCalcPos = latlng;
-    lastSpeedCalcTime = now;
+
+  const newSpeed = (dist / sec) * 3.6;
+
+  // 정박 상태 필터
+  if (newSpeed < 1.2 && lastAccuracy && lastAccuracy < 10) {
+    calculatedSpeedKmh = 0;
+    return calculatedSpeedKmh;
   }
+
+  calculatedSpeedKmh = newSpeed;
+
+  lastSpeedCalcPos = latlng;
+  lastSpeedCalcTime = now;
+}
 
   return calculatedSpeedKmh;
 }
