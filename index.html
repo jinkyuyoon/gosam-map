@@ -861,17 +861,17 @@ function createRangeRings() {
   RING_METERS.forEach(r => {
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
-      color: "#EFFFFF",
-      weight: 0.72,
+      color: "#6EFFFF,
+      weight: 1.0,
       opacity:
         r >= 50 ? 0.48 :
         r >= 40 ? 0.41 :
         r >= 30 ? 0.35 :
         r >= 20 ? 0.29 :
         r >= 10 ? 0.24 :
-        0.18,
+        0.55,
       fillOpacity: 0,
-      dashArray: "1,4",
+      dashArray: "2,4",
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
