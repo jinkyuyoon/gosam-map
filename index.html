@@ -675,11 +675,11 @@ function addPinHere() {
 
   const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
 
-  pins.push({
+ pins.push({
   lat: currentLatLng.lat,
   lng: currentLatLng.lng,
   name: "Point " + (pins.length + 1),
-  name: "Point " + Date.now()
+  createdAt: Date.now()
 });
 
   localStorage.setItem(
@@ -698,31 +698,34 @@ function loadPins() {
 
   pins.forEach((p, index) => {
 
-    const marker = L.marker([p.lat, p.lng])
-      .addTo(pinLayer)
-      .bindTooltip(p.name, {
-        permanent: true,
-        direction: "top"
-      });
+    const marker = L.marker([p.lat, p.lng]).addTo(pinLayer);
 
-    marker.on("click", () => {
+    marker.bindPopup(`
+      <b>${p.name}</b><br><br>
+      <button onclick="deletePin(${index})">
+        🗑️ 삭제
+      </button>
+    `);
 
-      if (confirm(`${p.name} 핀을 삭제하시겠습니까?`)) {
-
-        pins.splice(index, 1);
-
-        localStorage.setItem(
-          "gosamPins",
-          JSON.stringify(pins)
-        );
-
-        loadPins();
-      }
-
-    });
   });
 
-}  
+}
+
+window.deletePin = function(index) {
+
+  const pins = JSON.parse(localStorage.getItem("gosamPins") || "[]");
+
+  if (!confirm("핀을 삭제하시겠습니까?")) return;
+
+  pins.splice(index, 1);
+
+  localStorage.setItem(
+    "gosamPins",
+    JSON.stringify(pins)
+  );
+
+  loadPins();
+};
 /* =========================================================
    버튼
 ========================================================= */
