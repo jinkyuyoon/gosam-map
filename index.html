@@ -582,9 +582,13 @@ function chooseHeading(speed) {
    전체 업데이트
 ========================================================= */
 function updateInfo(accuracy, speed, source) {
+
   info.innerHTML =
-    `📍${accuracy ? Math.round(accuracy) + "m" : "-"} · 🧭${formatHeading(finalHeading)}(${source}) · 🚤${formatSpeed(speed)}<br>` +
-    `헤딩:<b>${headingUp ? "ON" : "OFF"}</b> · 추적:<b>${followBoat ? "ON" : "OFF"}</b> · ⭕5/10/20/30/40/50m · 🟡50m`;
+    `LAT: ${currentLatLng ? currentLatLng.lat.toFixed(6) : "-"}<br>` +
+    `LNG: ${currentLatLng ? currentLatLng.lng.toFixed(6) : "-"}<br>` +
+    `ACC: ${accuracy}<br>` +
+    `SRC: ${source}`;
+
 }
 
 function updateAll(pos, accuracy, speed, source) {
