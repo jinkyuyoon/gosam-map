@@ -931,6 +931,10 @@ function createRangeRings() {
 }
 
 function updateRangeRings(center) {
+  if (Object.keys(ringCircles).length === 0) {
+    createRangeRings();
+  }
+
   RING_METERS.forEach(r => {
     ringCircles[r].setLatLng(center);
 
@@ -1169,7 +1173,12 @@ function startGPS() {
     alert("GPS를 지원하지 않는 브라우저입니다.");
     return;
   }
-
+  
+  if (!followBoat) {
+  followBoat = true;
+  map.setView(smoothedLatLng, 19);
+  }
+  
   navigator.geolocation.watchPosition(
     pos => {
       const now = Date.now();
@@ -1659,7 +1668,7 @@ if(measurePoints.length===2){
 /* =========================================================
    시작
 ========================================================= */
-createRangeRings();
+// createRangeRings();
 createHeadingLine();
 createHeadingCone();
 createTrailLine();
