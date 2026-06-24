@@ -135,10 +135,9 @@
       border: none;
       box-shadow: none;
       text-shadow:
-        0 0 4px rgba(0,0,0,1),
-        0 0 10px rgba(0,0,0,1),
-        0 0 16px rgba(0,0,0,.9),
-        0 0 12px rgba(64,247,255,.35);
+        0 0 2px rgba(0,0,0,.9),
+        0 0 4px rgba(0,0,0,.8),
+        0 0 6px rgba(64,247,255,.2);
       white-space: nowrap;
     }
 
@@ -867,6 +866,15 @@ function createRangeRings() {
       interactive: false
     }).addTo(ringLayer);
 
+    circle.on("add", function() {
+      const el = this.getElement();
+
+      if (el) {
+        el.style.filter =
+          "drop-shadow(0 0 1px rgba(255,255,255,.25)) " +
+          "drop-shadow(0 0 4px rgba(64,247,255,.35))";
+      }
+    });
     ringCircles[r] = circle;
          
     if (r !== 5) {
