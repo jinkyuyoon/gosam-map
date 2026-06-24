@@ -837,58 +837,15 @@ function updateBoat(pos) {
   // 중요: GPS 이벤트에서는 위치만 갱신하고, 아이콘 재생성은 하지 않는다.
   // 회전은 나침반 이벤트에서 CSS transform으로 즉시 갱신한다.
   updateBoatRotationOnly();
-
-if (!radarPulse) {
-
-  radarPulse = L.circle(pos, {
-    radius: 1,
-    color: "#40F7FF",
-    weight: 3,
-    opacity: 0.8,
-    fillOpacity: 0,
-    interactive: false
-  }).addTo(map);
-
-  radarPulseTimer = setInterval(() => {
-
-    let radius = 1;
-
-    radarPulse.setLatLng(currentLatLng || pos);
-
-    const pulseAnim = setInterval(() => {
-
-      radius += 2;
-
-      radarPulse.setRadius(radius);
-
-      radarPulse.setStyle({
-        opacity: Math.max(0, 1 - radius / 60)
-      });
-
-      if (radius >= 60) {
-        clearInterval(pulseAnim);
-
-        radarPulse.setRadius(1);
-
-        radarPulse.setStyle({
-          opacity: 0.8
-        });
-      }
-
-    }, 40);
-
-  }, 2500);
-
-}
-
 }
 
 /* =========================================================
    거리 링 / 진행선
 ========================================================= */
 const ringLayer = L.layerGroup().addTo(map);
-let radarPulse = null;
-let radarPulseTimer = null;
+let radarSweep = [];
+let radarAngle = 0;
+let radarTimer = null;
 const labelLayer = L.layerGroup().addTo(map);
 let accuracyCircle = null;
 let headingCone = [];
@@ -957,46 +914,72 @@ function updateRangeRings(center) {
   });
 }
 
+function createRadarSweep() {
 
-
-
-function createHeadingCone() {
-  headingCone = [];
-
-  const opacities = [0.12, 0.10, 0.08, 0.06, 0.04];
+  const opacities = [0.28,0.18,0.10,0.05];
 
   opacities.forEach(opacity => {
-    const cone = L.polygon([], {
+
+    const beam = L.polygon([], {
       color: "transparent",
       weight: 0,
-      fillColor: "#FFB347",
+      fillColor: "#40F7FF",
       fillOpacity: opacity,
       interactive: false
     }).addTo(map);
 
-    headingCone.push(cone);
+    radarSweep.push(beam);
+
   });
+
+  radarTimer = setInterval(() => {
+
+    radarAngle = (radarAngle + 4) % 360;
+
+    if (smoothedLatLng) {
+      updateRadarSweep(smoothedLatLng);
+    }
+
+  }, 40);
+
 }
 
-function updateHeadingCone(center) {
-  if (!headingCone || !headingCone.length) return;
+function updateRadarSweep(center) {
 
-  const ranges = [15, 25, 35, 50, 65];
-  const spread = 24;
+  if (!center) return;
 
-  ranges.forEach((dist, idx) => {
+  const beamWidth = 18;
+
+  radarSweep.forEach((beam,index)=>{
+
+    const offset = index * 10;
+
+    const start =
+      radarAngle - beamWidth - offset;
+
+    const end =
+      radarAngle + beamWidth - offset;
 
     const pts = [center];
 
-    for (let a = finalHeading - spread; a <= finalHeading + spread; a += 2) {
+    for(let a=start;a<=end;a+=2){
+
       pts.push(
-        destinationPoint(center, dist, a)
+        destinationPoint(
+          center,
+          60,
+          a
+        )
       );
+
     }
 
-    headingCone[idx].setLatLngs([pts]);
+    beam.setLatLngs([pts]);
+
   });
+
 }
+
   
 function createTrailLine() {
   trailLine = L.polyline([], {
@@ -1107,7 +1090,7 @@ function updateAll(pos, accuracy, speed, source) {
 
   updateBoat(pos);
   updateRangeRings(pos);
-  updateHeadingCone(pos);
+  updateRadarSweep(pos);
   updateTrail(pos);
   updateNearestPinDistance(pos);
   checkStopwatchPosition(pos);
@@ -1660,7 +1643,7 @@ if(measurePoints.length===2){
 /* =========================================================
    시작
 ========================================================= */
-createHeadingCone();
+createRadarSweep();
 createTrailLine();
 
 // ✅ 저장된 핀 불러오기
