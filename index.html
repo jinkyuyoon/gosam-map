@@ -132,7 +132,34 @@
       transform-origin: 50% 50%;
       will-change: transform;
     }
+    .radar-pulse{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  border:2px solid rgba(64,247,255,.9);
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  animation:radarPulse 2.6s infinite;
+}
 
+@keyframes radarPulse{
+  0%{
+    transform:translate(-50%,-50%) scale(.3);
+    opacity:.9;
+  }
+
+  70%{
+    opacity:.35;
+  }
+
+  100%{
+    transform:translate(-50%,-50%) scale(10);
+    opacity:0;
+  }
+}
     .leaflet-control-attribution,
     .leaflet-control-container .leaflet-top.leaflet-left {
       display: none;
@@ -769,6 +796,13 @@ function boatSvg(size = 64) {
     </defs>
 
     <g filter="url(#boatGlow${size})">
+    
+    <circle
+  cx="42"
+  cy="42"
+  r="3"
+  fill="#40F7FF"
+/>
       <path d="M42 5
                C55 19 65 41 60 68
                C56 76 28 76 24 68
@@ -794,6 +828,27 @@ function boatSvg(size = 64) {
             stroke-width="2.2"
             stroke-linecap="round"/>
     </g>
+    <circle
+  cx="42"
+  cy="42"
+  r="5"
+  fill="rgba(64,247,255,.9)"
+>
+  <animate
+    attributeName="r"
+    from="5"
+    to="60"
+    dur="3.2s"
+    repeatCount="indefinite"
+  />
+  <animate
+    attributeName="opacity"
+    from="0.8"
+    to="0"
+    dur="2.6s"
+    repeatCount="indefinite"
+  />
+</circle>
   </svg>`;
 }
 
@@ -854,31 +909,11 @@ let pinAlert10m=false;
 let pinLayer = L.layerGroup().addTo(map);  
   
 const ringCircles = {};
-const ringGlow1 = {};
-const ringGlow2 = {};
 const ringLabels = {};
   
 function createRangeRings() {
   RING_METERS.forEach(r => {
-    
-    const glow1 = L.circle(INITIAL_CENTER, {
-      radius: r,
-      color: "#40F7FF",
-      weight: 48,
-      opacity: r < 20 ? 0 : 0.035,
-      fillOpacity: 0,
-      interactive: false
-    }).addTo(ringLayer);
-
-    const glow2 = L.circle(INITIAL_CENTER, {
-      radius: r,
-      color: "#40F7FF",
-      weight: 24,
-      opacity: r < 20 ? 0 : 0.075,
-      fillOpacity: 0,
-      interactive: false
-    }).addTo(ringLayer);
-    
+      
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
@@ -897,9 +932,7 @@ function createRangeRings() {
     }).addTo(ringLayer);
 
     ringCircles[r] = circle;
-    ringGlow1[r] = glow1;
-    ringGlow2[r] = glow2;
-      
+         
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
         icon: L.divIcon({
@@ -923,10 +956,7 @@ function updateRangeRings(center) {
 
   RING_METERS.forEach(r => {
     ringCircles[r].setLatLng(center);
-   
-    ringGlow1[r].setLatLng(center);
-    ringGlow2[r].setLatLng(center);
-  
+        
     if (ringLabels[r]) {
       ringLabels[r].setLatLng(
         destinationPoint(center, r, headingUp ? finalHeading : 0)
