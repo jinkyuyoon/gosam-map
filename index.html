@@ -858,15 +858,7 @@ const ringLabels = {};
   
 function createRangeRings() {
   RING_METERS.forEach(r => {
-    L.circle(INITIAL_CENTER, {
-      radius: r,
-      color: "#40F7FF",
-      weight: 14,
-      opacity: 0.16,
-      fillOpacity: 0,
-      interactive: false
-    }).addTo(ringLayer);
-    
+       
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
@@ -885,16 +877,7 @@ function createRangeRings() {
     }).addTo(ringLayer);
 
     ringCircles[r] = circle;
-
-    circle.on("add", function() {
-      const el = this.getElement();
-      if (el) {
-        el.style.filter =
-          "drop-shadow(0 0 6px #40F7FF) " +
-          "drop-shadow(0 0 18px #40F7FF)";
-      }
-    });
-    
+      
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
         icon: L.divIcon({
@@ -1630,7 +1613,6 @@ if(measurePoints.length===2){
 /* =========================================================
    시작
 ========================================================= */
-// createRangeRings();
 createHeadingCone();
 createTrailLine();
 
