@@ -514,7 +514,6 @@ const IMAGE_BOUNDS = [
 ];
 
 const RING_METERS = [5,10,20,30,40,50];
-const HEADING_LINE_METERS = 50;
 
 const MAX_GPS_ACCURACY_DROP = 80;
 const WEAK_GPS_ACCURACY = 25;
@@ -524,10 +523,6 @@ const POS_SMOOTH_GOOD = 0.20;
 const POS_SMOOTH_WEAK = 0.12;
 const COMPASS_SMOOTH = 0.20;
 const GPS_HEAD_SMOOTH = 0.16;
-
-// Leaflet rotate 방향이 반대로 느껴지면 -1로 바꾸면 됨
-const HEADING_BEARING_SIGN = 1;
-const HEADING_OFFSET = 0;
 
 // 회전 안정화
 const BEARING_UPDATE_MS = 40;
@@ -561,9 +556,7 @@ L.imageOverlay(IMAGE_URL, IMAGE_BOUNDS, {
 /* =========================================================
    상태
 ========================================================= */
-const compassBtn = document.getElementById("compassBtn");
 const headingBtn = document.getElementById("headingBtn");
-const followBtn = document.getElementById("followBtn");
 
 const hudAccuracy = document.getElementById("hudAccuracy");
 const hudSpeed = document.getElementById("hudSpeed");
@@ -596,8 +589,7 @@ let lastSpeedCalcPos = null;
 let lastSpeedCalcTime = null;
 let calculatedSpeedKmh = 0;
 let lastAccuracy = null;
-let lastSpeed = null;
-let lastAltitude = null;
+
 
 /* =========================================================
    사용자 조작 감지
@@ -685,16 +677,6 @@ function smoothLatLng(prev, next, factor) {
   );
 }
 
-function formatSpeed(s) {
-  if (s === null || s === undefined || isNaN(s)) return "-";
-  return (s * 3.6).toFixed(1) + "km/h";
-}
-
-function formatHeading(h) {
-  if (h === null || h === undefined || isNaN(h)) return "-";
-  return Math.round(normalizeDeg(h)) + "°";
-}
-
 function destinationPoint(center, meters, bearingDeg) {
   const R = 6371000;
   const brng = bearingDeg * Math.PI / 180;
@@ -769,10 +751,7 @@ function calculateSpeed(latlng) {
 }
 
 function updateButtons() {
-  if (compassBtn) compassBtn.classList.toggle("active", compassEnabled);
-  headingBtn.classList.toggle("active", headingUp);
-  if (followBtn) followBtn.classList.toggle("active", followBoat);
-  updateHUD(null, null, null);
+    headingBtn.classList.toggle("active", headingUp);
 }
 
 /* =========================================================
@@ -868,10 +847,7 @@ function updateBoat(pos) {
 ========================================================= */
 const ringLayer = L.layerGroup().addTo(map);
 const labelLayer = L.layerGroup().addTo(map);
-let headingLine = null;
-let headingLabel = null;
 let accuracyCircle = null;
-let accuracyLabel = null;
 let headingCone = [];
 let trailLine = null;
 let trailPoints = [];
@@ -946,9 +922,6 @@ function updateRangeRings(center) {
   });
 }
 
-function createHeadingLine() {}
-function updateHeadingLine(center) {}
-
 
 
 function createHeadingCone() {
@@ -1014,9 +987,6 @@ function updateTrail(pos) {
 
   trailLine.setLatLngs(trailPoints);
 }
-
-function ensureAccuracyLabel(center, accuracy) { return; }
-
 
 function ensureAccuracyCircle(center, accuracy){
   const a = Math.max(1, accuracy || 1);
@@ -1376,18 +1346,6 @@ window.toggleHeadingUp = function() {
   updateButtons();
 };
 
-window.toggleFollow = function() {
-  followBoat = !followBoat;
-
-  if (followBoat && smoothedLatLng) {
-    programmatic(() => {
-      map.setView(smoothedLatLng, Math.max(map.getZoom(), 17), { animate: true });
-    }, 400);
-  }
-
-  updateButtons();
-};
-
 
 /* =========================================================
    STOPWATCH
@@ -1663,7 +1621,6 @@ if(measurePoints.length===2){
    시작
 ========================================================= */
 // createRangeRings();
-createHeadingLine();
 createHeadingCone();
 createTrailLine();
 
