@@ -919,7 +919,7 @@ function updateRangeRings(center) {
         
     if (ringLabels[r]) {
       ringLabels[r].setLatLng(
-        destinationPoint(center, r, headingUp ? finalHeading : 0)
+        destinationPoint(center, r + 3, headingUp ? finalHeading : 0)
       );
     }
   });
