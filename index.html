@@ -1325,7 +1325,7 @@ window.goToMe = function() {
       const source = chooseHeading(pos.coords.speed);
 
       programmatic(() => {
-        map.setView(now, Math.max(map.getZoom(), 19), { animate: true });
+        map.setView(now, map.getZoom(), { animate: true });
       }, 500);
 
       updateAll(now, pos.coords.accuracy, pos.coords.speed, source);
