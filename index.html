@@ -132,34 +132,7 @@
       transform-origin: 50% 50%;
       will-change: transform;
     }
-    .radar-pulse{
-  position:absolute;
-  left:50%;
-  top:50%;
-  width:18px;
-  height:18px;
-  border-radius:50%;
-  border:2px solid rgba(64,247,255,.9);
-  transform:translate(-50%,-50%);
-  pointer-events:none;
-  animation:radarPulse 2.6s infinite;
-}
-
-@keyframes radarPulse{
-  0%{
-    transform:translate(-50%,-50%) scale(.3);
-    opacity:.9;
-  }
-
-  70%{
-    opacity:.35;
-  }
-
-  100%{
-    transform:translate(-50%,-50%) scale(10);
-    opacity:0;
-  }
-}
+   
     .leaflet-control-attribution,
     .leaflet-control-container .leaflet-top.leaflet-left {
       display: none;
@@ -797,13 +770,7 @@ function boatSvg(size = 64) {
 
     <g filter="url(#boatGlow${size})">
     
-    <circle
-  cx="42"
-  cy="42"
-  r="3"
-  fill="#40F7FF"
-/>
-      <path d="M42 5
+     <path d="M42 5
                C55 19 65 41 60 68
                C56 76 28 76 24 68
                C19 41 29 19 42 5 Z"
@@ -828,27 +795,6 @@ function boatSvg(size = 64) {
             stroke-width="2.2"
             stroke-linecap="round"/>
     </g>
-    <circle
-  cx="42"
-  cy="42"
-  r="5"
-  fill="rgba(64,247,255,.9)"
->
-  <animate
-    attributeName="r"
-    from="5"
-    to="60"
-    dur="3.2s"
-    repeatCount="indefinite"
-  />
-  <animate
-    attributeName="opacity"
-    from="0.8"
-    to="0"
-    dur="2.6s"
-    repeatCount="indefinite"
-  />
-</circle>
   </svg>`;
 }
 
