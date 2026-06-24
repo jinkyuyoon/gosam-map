@@ -837,12 +837,58 @@ function updateBoat(pos) {
   // 중요: GPS 이벤트에서는 위치만 갱신하고, 아이콘 재생성은 하지 않는다.
   // 회전은 나침반 이벤트에서 CSS transform으로 즉시 갱신한다.
   updateBoatRotationOnly();
+
+if (!radarPulse) {
+
+  radarPulse = L.circle(pos, {
+    radius: 1,
+    color: "#40F7FF",
+    weight: 3,
+    opacity: 0.8,
+    fillOpacity: 0,
+    interactive: false
+  }).addTo(map);
+
+  radarPulseTimer = setInterval(() => {
+
+    let radius = 1;
+
+    radarPulse.setLatLng(currentLatLng || pos);
+
+    const pulseAnim = setInterval(() => {
+
+      radius += 2;
+
+      radarPulse.setRadius(radius);
+
+      radarPulse.setStyle({
+        opacity: Math.max(0, 1 - radius / 60)
+      });
+
+      if (radius >= 60) {
+        clearInterval(pulseAnim);
+
+        radarPulse.setRadius(1);
+
+        radarPulse.setStyle({
+          opacity: 0.8
+        });
+      }
+
+    }, 40);
+
+  }, 2500);
+
+}
+
 }
 
 /* =========================================================
    거리 링 / 진행선
 ========================================================= */
 const ringLayer = L.layerGroup().addTo(map);
+let radarPulse = null;
+let radarPulseTimer = null;
 const labelLayer = L.layerGroup().addTo(map);
 let accuracyCircle = null;
 let headingCone = [];
