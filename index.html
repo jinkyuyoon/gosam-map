@@ -854,11 +854,31 @@ let pinAlert10m=false;
 let pinLayer = L.layerGroup().addTo(map);  
   
 const ringCircles = {};
+const ringGlow1 = {};
+const ringGlow2 = {};
 const ringLabels = {};
   
 function createRangeRings() {
   RING_METERS.forEach(r => {
-       
+    
+    const glow1 = L.circle(INITIAL_CENTER, {
+      radius: r,
+      color: "#40F7FF",
+      weight: 24,
+      opacity: 0.03,
+      fillOpacity: 0,
+      interactive: false
+    }).addTo(ringLayer);
+
+    const glow2 = L.circle(INITIAL_CENTER, {
+      radius: r,
+      color: "#40F7FF",
+      weight: 14,
+      opacity: 0.08,
+      fillOpacity: 0,
+      interactive: false
+    }).addTo(ringLayer);
+    
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
@@ -877,6 +897,8 @@ function createRangeRings() {
     }).addTo(ringLayer);
 
     ringCircles[r] = circle;
+    ringGlow1[r] = glow1;
+    ringGlow2[r] = glow2;
       
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
@@ -901,7 +923,10 @@ function updateRangeRings(center) {
 
   RING_METERS.forEach(r => {
     ringCircles[r].setLatLng(center);
-
+   
+    ringGlow1[r].setLatLng(center);
+    ringGlow2[r].setLatLng(center);
+  
     if (ringLabels[r]) {
       ringLabels[r].setLatLng(
         destinationPoint(center, r, headingUp ? finalHeading : 0)
