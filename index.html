@@ -861,8 +861,8 @@ function createRangeRings() {
     L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
-      weight: 6,
-      opacity: 0.10,
+      weight: 14,
+      opacity: 0.16,
       fillOpacity: 0,
       interactive: false
     }).addTo(ringLayer);
@@ -870,7 +870,7 @@ function createRangeRings() {
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#40F7FF",
-      weight: 1.0,
+      weight: 1.8,
       opacity:
         r >= 50 ? 0.9 :
         r >= 40 ? 0.5 :
@@ -886,6 +886,15 @@ function createRangeRings() {
 
     ringCircles[r] = circle;
 
+    circle.on("add", function() {
+      const el = this.getElement();
+      if (el) {
+        el.style.filter =
+          "drop-shadow(0 0 6px #40F7FF) " +
+          "drop-shadow(0 0 18px #40F7FF)";
+      }
+    });
+    
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
         icon: L.divIcon({
