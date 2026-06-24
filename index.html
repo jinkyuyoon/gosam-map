@@ -935,8 +935,8 @@ function createRadarSweep(){
  radarCanvas=document.createElement('div');
  radarCanvas.id='garminRadar';
  radarCanvas.style.position='absolute';
- radarCanvas.style.width='420px';
- radarCanvas.style.height='420px';
+ radarCanvas.style.width='650px';
+ radarCanvas.style.height='650px';
  radarCanvas.style.pointerEvents='none';
  radarCanvas.style.zIndex='520';
  radarCanvas.style.borderRadius='50%';
@@ -958,14 +958,14 @@ function animateRadar(){
 
    const p=map.latLngToContainerPoint(radarCenter);
 
-   radarCanvas.style.left=(p.x-210)+'px';
-   radarCanvas.style.top=(p.y-210)+'px';
+   radarCanvas.style.left=(p.x-325)+'px';
+   radarCanvas.style.top=(p.y-325)+'px';
 
    radarAngle=(radarAngle+1.2)%360;
 
    radarCanvas.style.background=`
      radial-gradient(circle,
-  rgba(64,247,255,.35) 0%,
+  rgba(64,247,255,.55) 0%,
   rgba(64,247,255,.18) 35%,
   rgba(64,247,255,.08) 65%,
   rgba(64,247,255,0) 80%
