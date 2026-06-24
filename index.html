@@ -965,7 +965,7 @@ function createRadarSweep() {
 
   if (!radarTimer) {
     radarTimer = setInterval(() => {
-      radarAngle = (radarAngle + 0.9) % 360;
+      radarAngle = (radarAngle + 2.5) % 360;
 
       if (smoothedLatLng) {
         updateRadarSweep(smoothedLatLng);
