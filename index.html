@@ -28,7 +28,7 @@
       width: 100%;
       height: 100dvh;
       background: #071018;
-      filter: saturate(.55) contrast(1.15) brightness(.52);
+      filter: saturate(.70) contrast(1.8) brightness(.8);
     }
 
     #map::after {
@@ -941,7 +941,7 @@ function createRadarSweep(){
  radarCanvas.style.zIndex='520';
  radarCanvas.style.borderRadius='50%';
  radarCanvas.style.mixBlendMode='screen';
- radarCanvas.style.filter='blur(10px)';
+ radarCanvas.style.filter='blur(22px)';
 
  map.getContainer().appendChild(radarCanvas);
 
@@ -965,20 +965,26 @@ function animateRadar(){
 
    radarCanvas.style.background=`
      radial-gradient(circle,
-       rgba(64,247,255,.18) 0%,
-       rgba(64,247,255,.10) 28%,
-       rgba(64,247,255,.04) 55%,
-       rgba(64,247,255,0) 72%),
+  rgba(64,247,255,.35) 0%,
+  rgba(64,247,255,.18) 35%,
+  rgba(64,247,255,.08) 65%,
+  rgba(64,247,255,0) 80%
+),
      conic-gradient(
-       from ${radarAngle}deg,
-       rgba(255,255,255,.95) 0deg,
-       rgba(180,255,255,.65) 4deg,
-       rgba(64,247,255,.35) 18deg,
-       rgba(64,247,255,.18) 40deg,
-       rgba(64,247,255,.08) 70deg,
-       rgba(64,247,255,0) 120deg,
-       rgba(64,247,255,0) 360deg
-     )`;
+  from ${radarAngle}deg,
+
+  rgba(64,247,255,0) 0deg,
+  rgba(64,247,255,.08) 60deg,
+  rgba(64,247,255,.25) 90deg,
+  rgba(64,247,255,.55) 110deg,
+  rgba(180,255,255,.95) 116deg,
+  rgba(255,255,255,1) 120deg,
+
+  rgba(255,255,255,1) 121deg,
+
+  rgba(64,247,255,0) 122deg,
+  rgba(64,247,255,0) 360deg
+)`;
  }
 
  requestAnimationFrame(animateRadar);
