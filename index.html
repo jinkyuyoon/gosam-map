@@ -1204,7 +1204,7 @@ function startGPS() {
       updateHUD(accuracy, speed, altitude);
     },
     err => {
-      alert("GPS 오류. HTTPS 주소와 Safari 위치 권한을 확인하세요.");
+      console.log("GPS:", err);
     },
     {
       enableHighAccuracy: true,
