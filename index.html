@@ -1105,8 +1105,7 @@ function updateAll(pos, accuracy, speed, source) {
   checkStopwatchPosition(pos);
   ensureAccuracyCircle(pos, accuracy);
   applyHeadingBearingIfNeeded();
-  updateHUD(accuracy, speed, null);
-
+  
   if (followBoat && !isUserInteracting()) {
     const now = Date.now();
     if (now - lastCenterUpdateAt > 350) {
@@ -1173,12 +1172,7 @@ function startGPS() {
     alert("GPS를 지원하지 않는 브라우저입니다.");
     return;
   }
-  
-  if (!followBoat) {
-  followBoat = true;
-  map.setView(smoothedLatLng, 19);
-  }
-  
+    
   navigator.geolocation.watchPosition(
     pos => {
       const now = Date.now();
@@ -1204,10 +1198,10 @@ function startGPS() {
       }
 
       if (smoothedLatLng && smoothedLatLng.distanceTo(raw) < MIN_MOVE_METERS) {
-        const source = chooseHeading(speed);
-        updateAll(smoothedLatLng, accuracy, speed, source);
+        onst source = chooseHeading(speed);
         calculateSpeed(smoothedLatLng || raw);
-      updateHUD(accuracy, speed, altitude);
+        updateAll(smoothedLatLng, accuracy, speed, source);
+        updateHUD(accuracy, speed, altitude);
         return;
       }
 
@@ -1218,8 +1212,8 @@ function startGPS() {
       smoothedLatLng = smoothLatLng(smoothedLatLng, raw, factor);
 
       const source = chooseHeading(speed);
-      updateAll(smoothedLatLng, accuracy, speed, source);
       calculateSpeed(smoothedLatLng || raw);
+      updateAll(smoothedLatLng, accuracy, speed, source);
       updateHUD(accuracy, speed, altitude);
     },
     err => {
