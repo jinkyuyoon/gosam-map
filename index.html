@@ -914,27 +914,42 @@ function updateRangeRings(center) {
   });
 }
 
+const radarLayers = [];
+
+let radarAngle = 0;
+let radarTimer = null;
+
 function createRadarSweep() {
 
-  const opacities = [0.28,0.18,0.10,0.05];
+  const defs = [
 
-  opacities.forEach(opacity => {
+    { width: 4,  opacity: 0.95, color: "#FFFFFF" },
+    { width: 10, opacity: 0.35, color: "#9EFFFF" },
+    { width: 20, opacity: 0.16, color: "#40F7FF" },
+    { width: 35, opacity: 0.08, color: "#40F7FF" },
+    { width: 55, opacity: 0.03, color: "#40F7FF" }
+
+  ];
+
+  defs.forEach(def => {
 
     const beam = L.polygon([], {
-      color: "transparent",
-      weight: 0,
-      fillColor: "#40F7FF",
-      fillOpacity: opacity,
+      stroke: false,
+      fillColor: def.color,
+      fillOpacity: def.opacity,
       interactive: false
     }).addTo(map);
 
-    radarSweep.push(beam);
+    radarLayers.push({
+      beam,
+      width: def.width
+    });
 
   });
 
   radarTimer = setInterval(() => {
 
-    radarAngle = (radarAngle + 4) % 360;
+    radarAngle = (radarAngle + 2.2) % 360;
 
     if (smoothedLatLng) {
       updateRadarSweep(smoothedLatLng);
@@ -944,7 +959,37 @@ function createRadarSweep() {
 
 }
 
-function updateRadarSweep(center) {
+  function updateRadarSweep(center) {
+
+  if (!center) return;
+
+  radarLayers.forEach(layer => {
+
+    const pts = [center];
+
+    const start =
+      radarAngle - layer.width;
+
+    const end =
+      radarAngle + layer.width;
+
+    for (let a = start; a <= end; a += 2) {
+
+      pts.push(
+        destinationPoint(
+          center,
+          60,
+          a
+        )
+      );
+
+    }
+
+    layer.beam.setLatLngs([pts]);
+
+  });
+
+}
 
   if (!center) return;
 
