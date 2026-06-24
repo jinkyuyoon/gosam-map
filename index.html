@@ -862,7 +862,7 @@ function createRangeRings() {
   RING_METERS.forEach(r => {
     
     const glow1 = L.circle(INITIAL_CENTER, {
-      radius: r,
+      radius: r + 4,
       color: "#40F7FF",
       weight: 24,
       opacity: 0.03,
@@ -871,7 +871,7 @@ function createRangeRings() {
     }).addTo(ringLayer);
 
     const glow2 = L.circle(INITIAL_CENTER, {
-      radius: r,
+      radius: r + 2,
       color: "#40F7FF",
       weight: 14,
       opacity: 0.08,
