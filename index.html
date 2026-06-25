@@ -165,9 +165,10 @@ html, body {
       pointer-events: none;
       border: 1px solid rgba(255,255,255,.08);
       background:
-        radial-gradient(circle at 28% 12%, rgba(255,255,255,.18), rgba(255,255,255,0) 36%),
-        linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.035)),
-        rgba(6,15,18,.20);
+        background:
+    radial-gradient(circle at 28% 12%, rgba(255,255,255,.08), rgba(255,255,255,0) 38%),
+    linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
+    var(--glass-bg);
       backdrop-filter: blur(40px) saturate(170%);
       -webkit-backdrop-filter: blur(40px) saturate(170%);
       box-shadow:
@@ -441,7 +442,6 @@ html, body {
   bottom:calc(12px + env(safe-area-inset-bottom));
   padding:7px 8px;
   border-radius:16px;
-  background:rgba(6,15,18,.12);
   border:1px solid rgba(255,255,255,.06);
   backdrop-filter:blur(50px) saturate(170%);
   -webkit-backdrop-filter:blur(50px) saturate(170%);
@@ -468,15 +468,15 @@ html, body {
 }
 
 #dataCard .data-value{
-  font-size:14px;
-  line-height:1;
-  letter-spacing:-.2px;
+  font-size:30px;
+    font-weight:800;
+    letter-spacing:-1px;
 }
 
 #dataCard .data-unit,
 #dataCard .data-sub{
-  font-size:9px;
-  margin-left:2px;
+   font-size:10px;
+    opacity:.7;
 }
 
 .controls{
@@ -607,11 +607,7 @@ html, body {
     <div class="data-label">속도</div>
     <div><span id="hudSpeed" class="data-value">--</span><span class="data-unit">km/h</span></div>
   </div>
-  <div class="data-block">
-    <div class="data-label">방향</div>
-    <div><span id="hudHeading" class="data-value">--</span><span id="hudDir" class="data-sub"></span></div>
-  </div>
-  
+   
 </div>
 
 
