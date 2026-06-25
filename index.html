@@ -845,8 +845,22 @@ const ringLabels = {};
 function createRangeRings() {
 
   RING_METERS.forEach(r => {
-
+   const shadowCircle = L.circle(INITIAL_CENTER, {
+    renderer: L.svg(),
+     
+    radius: r + 0.45,
+    color: "#000000",
+    weight: 3.6,
+    opacity: 0.45,
+    fillOpacity: 0,
+    dashArray: "2,6",
+    lineCap: "round",
+    interactive: false
+  }).addTo(ringLayer);
+    
     const circle = L.circle(INITIAL_CENTER, {
+    renderer: L.svg(),
+      
       radius: r,
       color: "#8FFFFF",
       weight: 1,
@@ -862,7 +876,8 @@ function createRangeRings() {
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
-
+    
+    ringCircles["shadow_" + r] = shadowCircle;
     ringCircles[r] = circle;
 
     if (r !== 5) {
