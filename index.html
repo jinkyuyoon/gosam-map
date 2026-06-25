@@ -851,17 +851,17 @@ function createRangeRings() {
     renderer: ringRenderer,
       
       radius: r,
-      color: "#8FFFFF",
-      weight: 1.1,
+      color: "#B8FFFF",
+      weight: 1.6,
       opacity:
-        r >= 50 ? 0.1 :
+        r >= 50 ? 1.0 :
         r >= 40 ? 0.6 :
-        r >= 30 ? 0.1 :
+        r >= 30 ? 1.0 :
         r >= 20 ? 0.6 :
-        r >= 10 ? 0.1 :
-        1.0,
+        r >= 10 ? 1.0 :
+        0.9,
       fillOpacity: 0,
-      dashArray: "1,5",
+      dashArray: "2,5",
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
