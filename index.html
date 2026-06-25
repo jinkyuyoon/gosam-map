@@ -842,35 +842,41 @@ let pinLayer = L.layerGroup().addTo(map);
 const ringCircles = {};
 const ringLabels = {};
   
-function createRangeRings() {
-  RING_METERS.forEach(r => {
-      
-    const circle = L.circle(INITIAL_CENTER, {
-      radius: r,
-      color: "#8FFFFF",
-      weight: 1.0,
-      opacity:
-        r >= 50 ? 0.9 :
-        r >= 40 ? 0.5 :
-        r >= 30 ? 0.9 :
-        r >= 20 ? 0.5 :
-        r >= 10 ? 0.9 :
-        0.9,
-      fillOpacity: 0,
-      dashArray: "1,5",
-      lineCap: "round",
-      interactive: false
-    }).addTo(ringLayer);
+const shadowCircle = L.circle(INITIAL_CENTER, {
+  radius: r,
+  color: "rgba(0,0,0,.65)",
+  weight: 2.4,
+  opacity:
+    r >= 50 ? 0.35 :
+    r >= 40 ? 0.22 :
+    r >= 30 ? 0.35 :
+    r >= 20 ? 0.22 :
+    r >= 10 ? 0.35 :
+    0.35,
+  fillOpacity: 0,
+  dashArray: "1,5",
+  lineCap: "round",
+  interactive: false
+}).addTo(ringLayer);
 
-    circle.on("add", function () {
-  const el = this.getElement();
+const circle = L.circle(INITIAL_CENTER, {
+  radius: r,
+  color: "#8FFFFF",
+  weight: 0.9,
+  opacity:
+    r >= 50 ? 0.75 :
+    r >= 40 ? 0.38 :
+    r >= 30 ? 0.75 :
+    r >= 20 ? 0.38 :
+    r >= 10 ? 0.75 :
+    0.75,
+  fillOpacity: 0,
+  dashArray: "1,5",
+  lineCap: "round",
+  interactive: false
+}).addTo(ringLayer);
 
-  if (!el) return;
-
-  el.style.filter =
-    "drop-shadow(0 3px 4px rgba(0,0,0,.65)) " +
-    "drop-shadow(0 0 2px rgba(64,247,255,.18))";
-});
+    ringCircles["shadow_" + r] = shadowCircle;
     ringCircles[r] = circle;
          
     if (r !== 5) {
@@ -895,6 +901,9 @@ function updateRangeRings(center) {
   }
 
   RING_METERS.forEach(r => {
+    if (ringCircles["shadow_" + r]) {
+  ringCircles["shadow_" + r].setLatLng(center);
+}
     ringCircles[r].setLatLng(center);
         
     if (ringLabels[r]) {
