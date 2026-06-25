@@ -105,9 +105,17 @@ button{
 /* ==========================================================================
    05. HUD CARDS
 ========================================================================== */
-.hud-card{
+  .hud-stack{
   position:absolute;
+  left:12px;
+  bottom:calc(var(--hud-bottom) + env(safe-area-inset-bottom));
   z-index:1000;
+  display:flex;
+  flex-direction:column-reverse;
+  gap:var(--hud-gap);
+}
+  
+  .hud-card{
   pointer-events:none;
   width:var(--hud-size);
   border-radius:var(--hud-radius);
@@ -117,20 +125,8 @@ button{
 }
 
 #stopwatchCard{
-  left:12px;
-  bottom:calc(var(--hud-bottom) + env(safe-area-inset-bottom) + (var(--hud-size) + var(--hud-gap) + 8px) * 1);
   pointer-events:auto;
   cursor:pointer;
-}
-
-#measureCard{
-  left:12px;
-  bottom:calc(var(--hud-bottom) + env(safe-area-inset-bottom) + (var(--hud-size) + var(--hud-gap) + 8px) * 3);
-}
-
-#pinDistanceCard{
-  left:12px;
-  bottom:calc(var(--hud-bottom) + env(safe-area-inset-bottom) + (var(--hud-size) + var(--hud-gap) + 8px) * 2);
 }
 
 .hud-label,
@@ -158,8 +154,6 @@ button{
 
 /* 속도 카드 */
 #dataCard{
-  left:12px;
-  bottom:calc(var(--hud-bottom) + env(safe-area-inset-bottom));
   width:var(--hud-size);
   min-height:var(--hud-size);
   padding:8px 8px 7px;
@@ -425,6 +419,7 @@ button{
 <body>
 <div id="map"></div>
 
+<div class="hud-stack">
 <div id="stopwatchCard" class="hud-card" onclick="toggleStopwatch()">
 <div class="hud-label">TIMER</div>
 <div id="stopwatchDisplay" class="hud-value">00:00</div>
@@ -443,11 +438,12 @@ button{
 
 <div id="dataCard" class="hud-card">
   <div class="data-block">
-    <div class="data-label">속도</div>
-    <div><span id="hudSpeed" class="data-value">--</span><span class="data-unit">km/h</span></div>
+    <div class="data-label">SPEED</div>
+    <div><span id="hudSpeed" class="data-value">--</span><span class="data-unit">km/h</span>
+    </div>
   </div>
-   
-</div>
+ </div>
+</div> 
 
 
 
