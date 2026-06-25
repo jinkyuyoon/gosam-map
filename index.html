@@ -846,26 +846,13 @@ const ringRenderer = L.svg();
 function createRangeRings() {
 
   RING_METERS.forEach(r => {
-   const shadowCircle = L.circle(INITIAL_CENTER, {
-    renderer: ringRenderer,
-     
-    radius: r,
-    color: "#000000",
-    weight: 2.2,
-    opacity: 0.45,
-    fillOpacity: 0,
-    dashArray: "1,5",
-    lineCap: "round",
-    interactive: false
-  }).addTo(ringLayer);
-    shadowCircle.bringToBack();
-    
+      
     const circle = L.circle(INITIAL_CENTER, {
     renderer: ringRenderer,
       
       radius: r,
       color: "#8FFFFF",
-      weight: 1.5,
+      weight: 1.1,
       opacity:
         r >= 50 ? 0.1 :
         r >= 40 ? 0.6 :
@@ -878,9 +865,7 @@ function createRangeRings() {
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
-    circle.bringToFront();
-    
-    ringCircles["shadow_" + r] = shadowCircle;
+       
     ringCircles[r] = circle;
 
     if (r !== 5) {
@@ -906,9 +891,7 @@ function updateRangeRings(center) {
   }
 
   RING_METERS.forEach(r => {
-    if (ringCircles["shadow_" + r]) {
-  ringCircles["shadow_" + r].setLatLng(center);
-}
+   
     ringCircles[r].setLatLng(center);
         
     if (ringLabels[r]) {
