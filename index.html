@@ -841,12 +841,13 @@ let pinLayer = L.layerGroup().addTo(map);
   
 const ringCircles = {};
 const ringLabels = {};
+const ringRenderer = L.svg();
   
 function createRangeRings() {
 
   RING_METERS.forEach(r => {
    const shadowCircle = L.circle(INITIAL_CENTER, {
-    renderer: L.svg(),
+    renderer: ringRenderer,
      
     radius: r,
     color: "#000000",
@@ -857,9 +858,10 @@ function createRangeRings() {
     lineCap: "round",
     interactive: false
   }).addTo(ringLayer);
+    shadowCircle.bringToBack();
     
     const circle = L.circle(INITIAL_CENTER, {
-    renderer: L.svg(),
+    renderer: ringRenderer,
       
       radius: r,
       color: "#8FFFFF",
@@ -876,6 +878,7 @@ function createRangeRings() {
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
+    circle.bringToFront();
     
     ringCircles["shadow_" + r] = shadowCircle;
     ringCircles[r] = circle;
