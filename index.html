@@ -842,59 +842,46 @@ let pinLayer = L.layerGroup().addTo(map);
 const ringCircles = {};
 const ringLabels = {};
   
-const shadowCircle = L.circle(INITIAL_CENTER, {
-  radius: r,
-  color: "rgba(0,0,0,.65)",
-  weight: 2.4,
-  opacity:
-    r >= 50 ? 0.35 :
-    r >= 40 ? 0.22 :
-    r >= 30 ? 0.35 :
-    r >= 20 ? 0.22 :
-    r >= 10 ? 0.35 :
-    0.35,
-  fillOpacity: 0,
-  dashArray: "1,5",
-  lineCap: "round",
-  interactive: false
-}).addTo(ringLayer);
+function createRangeRings() {
 
-const circle = L.circle(INITIAL_CENTER, {
-  radius: r,
-  color: "#8FFFFF",
-  weight: 0.9,
-  opacity:
-    r >= 50 ? 0.75 :
-    r >= 40 ? 0.38 :
-    r >= 30 ? 0.75 :
-    r >= 20 ? 0.38 :
-    r >= 10 ? 0.75 :
-    0.75,
-  fillOpacity: 0,
-  dashArray: "1,5",
-  lineCap: "round",
-  interactive: false
-}).addTo(ringLayer);
+  RING_METERS.forEach(r => {
 
-    ringCircles["shadow_" + r] = shadowCircle;
+    const circle = L.circle(INITIAL_CENTER, {
+      radius: r,
+      color: "#8FFFFF",
+      weight: 1,
+      opacity:
+        r >= 50 ? 0.75 :
+        r >= 40 ? 0.38 :
+        r >= 30 ? 0.75 :
+        r >= 20 ? 0.38 :
+        r >= 10 ? 0.75 :
+        0.75,
+      fillOpacity: 0,
+      dashArray: "1,5",
+      lineCap: "round",
+      interactive: false
+    }).addTo(ringLayer);
+
     ringCircles[r] = circle;
-         
+
     if (r !== 5) {
       const label = L.marker(INITIAL_CENTER, {
         icon: L.divIcon({
           className: "ring-label",
           html: `${r}m`,
-          iconSize: [30, 14],
-          iconAnchor: [15, 7]
+          iconSize: [30,14],
+          iconAnchor: [15,7]
         }),
-        interactive: false
+        interactive:false
       }).addTo(labelLayer);
 
       ringLabels[r] = label;
     }
-  });
-}
 
+  });
+
+}
 function updateRangeRings(center) {
   if (Object.keys(ringCircles).length === 0) {
     createRangeRings();
