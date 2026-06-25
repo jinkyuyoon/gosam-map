@@ -848,12 +848,12 @@ function createRangeRings() {
    const shadowCircle = L.circle(INITIAL_CENTER, {
     renderer: L.svg(),
      
-    radius: r + 0.1,
+    radius: r,
     color: "#000000",
-    weight: 1.6,
+    weight: 1.8,
     opacity: 0.45,
     fillOpacity: 0,
-    dashArray: "2,6",
+    dashArray: "1,5",
     lineCap: "round",
     interactive: false
   }).addTo(ringLayer);
@@ -863,7 +863,7 @@ function createRangeRings() {
       
       radius: r,
       color: "#8FFFFF",
-      weight: 1,
+      weight: 1.5,
       opacity:
         r >= 50 ? 0.9 :
         r >= 40 ? 0.5 :
