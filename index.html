@@ -181,13 +181,22 @@ button{
 }
 
 #dataCard .data-value{
-  display:inline-block;
-  color:var(--accent);
-  font-size:calc(var(--hud-size) * .42);
-  font-weight:900;
-  line-height:.92;
-  letter-spacing:-1.4px;
-  text-shadow:0 0 16px var(--accent-soft);
+    display:block;
+    width:100%;
+    text-align:center;
+
+    color:var(--accent);
+    font-size:26px;
+    font-weight:900;
+    line-height:1;
+
+    letter-spacing:-0.5px;
+
+    font-variant-numeric:tabular-nums;
+    font-feature-settings:"tnum";
+
+    white-space:nowrap;
+    overflow:hidden;
 }
 
 #dataCard .data-unit{
@@ -695,7 +704,7 @@ function updateHUD(accuracy, speed, altitude) {
 
 
   if (hudSpeed) {
-    hudSpeed.textContent = calculatedSpeedKmh.toFixed(1);
+    hudSpeed.textContent = Number(calculatedSpeedKmh || 0).toFixed(1);
   }
 
   if (hudHeading) {
