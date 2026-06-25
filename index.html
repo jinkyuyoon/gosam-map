@@ -848,7 +848,7 @@ function createRangeRings() {
     const circle = L.circle(INITIAL_CENTER, {
       radius: r,
       color: "#8FFFFF",
-      weight: 2.6,
+      weight: 1.0,
       opacity:
         r >= 50 ? 0.9 :
         r >= 40 ? 0.5 :
@@ -857,20 +857,20 @@ function createRangeRings() {
         r >= 10 ? 0.9 :
         0.9,
       fillOpacity: 0,
-      dashArray: "1,3",
+      dashArray: "1,5",
       lineCap: "round",
       interactive: false
     }).addTo(ringLayer);
 
-    circle.on("add", function() {
-      const el = this.getElement();
+    circle.on("add", function () {
+  const el = this.getElement();
 
-      if (el) {
-        el.style.filter =
-          "drop-shadow(0 0 1px rgba(255,255,255,.25)) " +
-          "drop-shadow(0 0 4px rgba(64,247,255,.35))";
-      }
-    });
+  if (!el) return;
+
+  el.style.filter =
+    "drop-shadow(0 3px 4px rgba(0,0,0,.65)) " +
+    "drop-shadow(0 0 2px rgba(64,247,255,.18))";
+});
     ringCircles[r] = circle;
          
     if (r !== 5) {
